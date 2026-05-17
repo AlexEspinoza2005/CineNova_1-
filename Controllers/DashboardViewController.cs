@@ -62,6 +62,17 @@ namespace MovieApi.Controllers
 
             ViewBag.RecentReviews = recentReviews;
 
+            var recentQueries = await _context.AgentQueries
+                .Include(q => q.Profile)
+                .OrderByDescending(q => q.CreatedAt)
+                .Take(10)
+                .ToListAsync();
+
+            foreach (var query in recentQueries)
+                query.CreatedAt = TimeZoneInfo.ConvertTimeFromUtc(query.CreatedAt, ecuadorZone);
+
+            ViewBag.RecentQueries = recentQueries;
+
             ViewBag.Users = await _context.Profiles
                 .Include(p => p.UserRoles)
                     .ThenInclude(ur => ur.Role)
