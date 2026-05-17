@@ -42,12 +42,7 @@ namespace MovieApi.Controllers
             // ══════════════════════════════════════════
             //  1) CREACIÓN — se evalúa PRIMERO
             // ══════════════════════════════════════════
-            string[] creationOnlyKeywords = {
-            "registra la película", "registra película", "crea la película", "crea película",
-    "inserta la película", "inserta película",
-    "añade la película", "agrega la película",
-    "añade película", "agrega película"
-            };
+            string[] creationOnlyKeywords = { "registra", "crea", "inserta", "añade la película", "agrega la película", "añade película", "agrega película" };
             bool isCreationRequest = creationOnlyKeywords.Any(k => questionLower.Contains(k));
 
             if (isCreationRequest)
@@ -182,34 +177,28 @@ Hora actual en Ecuador: {nowDisplay:dd/MM/yyyy HH:mm:ss}
 
 USUARIO: {userProfile?.FullName ?? "Usuario"} | Rol: {(isAdmin ? "Administrador" : "Cliente")}
 
-SUS PELÍCULAS ({userMovies.Count}):
-{(userMovies.Any() ? string.Join("\n", userMovies.Select((m, i) => $"  {i + 1}. '{m.Title}' | Género: {m.Genre} | Director: {m.Director} | Año: {m.Year} | Duración: {m.DurationMin?.ToString() ?? "no registrada"} min | Estado: {m.InsertionStatus} | Latencia inserción: {m.InsertionLatencyMs}ms")) : "ninguna película registrada aún")}
-
+SUS PELÍCULAS ({userMovies.Count}): {moviesText}
 SUS LISTAS: {listsText}
 SUS FAVORITOS: {favoritesText}
 
-MÉTRICAS GLOBALES DEL SISTEMA:
-- Total películas en sistema: {metrics?.TotalMovies} | Total usuarios: {metrics?.TotalUsers}
-- Latencia promedio de inserción: {metrics?.AvgInsertionLatencyMs}ms
-- Latencia promedio de búsqueda semántica: {metrics?.AvgQueryLatencyMs}ms
-- Tasa de éxito: {metrics?.SuccessRatePct}% | Total errores: {metrics?.TotalErrors} | Duplicados: {metrics?.TotalDuplicates}
-- Vectores almacenados: {vectorCount} | Películas sin vector: {moviesWithoutVector.Count}
-- Total consultas al agente: {metrics?.TotalAgentQueries}
+MÉTRICAS DEL SISTEMA:
+- Total películas: {metrics?.TotalMovies} | Usuarios: {metrics?.TotalUsers}
+- Latencia inserción: {metrics?.AvgInsertionLatencyMs}ms | Latencia semántica: {metrics?.AvgQueryLatencyMs}ms
+- Tasa éxito: {metrics?.SuccessRatePct}% | Errores: {metrics?.TotalErrors} | Duplicados: {metrics?.TotalDuplicates}
+- Vectores almacenados: {vectorCount} | Sin vector: {moviesWithoutVector.Count}
+- Consultas al agente: {metrics?.TotalAgentQueries}
 {adminSection}
 
 ERRORES RECIENTES: {errorsText}
 
-HISTORIAL DE CONVERSACIÓN:
+HISTORIAL:
 {historyText}
 
 INSTRUCCIONES:
-- Responde directo y natural, sin saludos repetidos si hay historial
-- Usa SOLO los datos que se te proporcionan arriba, nunca inventes ni estimes
-- Para preguntas sobre cantidad de películas del usuario, usa el número exacto: {userMovies.Count}
-- Para latencias, usa los valores exactos de métricas globales
-- Para géneros o directores, analiza la lista detallada de sus películas
-- Si el dato no está en el contexto, dilo honestamente
-- Puedes hacer análisis y comparaciones con los datos disponibles";
+- Responde directo, sin saludos repetidos si hay historial
+- Usa datos reales, nunca estimes ni inventes
+- Si preguntan géneros, analiza la lista de películas del usuario
+- Si no tienes el dato, dilo honestamente";
 
             var answer = await _vertexAI.GetChatResponseAsync(
                 request.Question,
@@ -282,6 +271,16 @@ INSTRUCCIONES:
 
                 var title = movie.Title;
                 _context.Movies.Remove(movie);
+                _context.OperationLogs.Add(new OperationLog
+                {
+                    UserId = userId,
+                    Action = "delete_movie",
+                    Status = "success",
+                    RecordsAffected = 1,
+                    ErrorMessage = $"El usuario eliminó la película \"{title}\" vía agente IA",
+                    Metadata = $"{{\"title\":\"{title}\"}}",
+                    CreatedAt = DateTime.UtcNow
+                });
                 await _context.SaveChangesAsync();
 
                 return $"✅ Película \"{title}\" eliminada correctamente.";
@@ -444,6 +443,16 @@ INSTRUCCIONES:
                            "Puedes indicarme: título, duración, género, director, año, sinopsis o imagen/portada (URL).";
 
                 movie.UpdatedAt = DateTime.UtcNow;
+                _context.OperationLogs.Add(new OperationLog
+                {
+                    UserId = userId,
+                    Action = "edit_movie",
+                    Status = "success",
+                    RecordsAffected = 1,
+                    ErrorMessage = $"El usuario editó la película \"{movie.Title}\" vía agente IA",
+                    Metadata = $"{{\"title\":\"{movie.Title}\"}}",
+                    CreatedAt = DateTime.UtcNow
+                });
                 await _context.SaveChangesAsync();
 
                 return $"✅ Película actualizada correctamente:\n" +
@@ -522,6 +531,17 @@ INSTRUCCIONES:
                 };
 
                 _context.Movies.Add(movie);
+                _context.OperationLogs.Add(new OperationLog
+                {
+                    UserId = userId,
+                    Action = "insert_movie",
+                    Status = "success",
+                    LatencyMs = (int)stopwatch.ElapsedMilliseconds,
+                    RecordsAffected = 1,
+                    ErrorMessage = $"El usuario registró la película \"{movie.Title}\" vía agente IA",
+                    Metadata = $"{{\"title\":\"{movie.Title}\",\"genre\":\"{movie.Genre}\",\"director\":\"{movie.Director}\",\"year\":{movie.Year}}}",
+                    CreatedAt = DateTime.UtcNow
+                });
                 await _context.SaveChangesAsync();
 
                 return $"✅ Película registrada exitosamente:\n" +
