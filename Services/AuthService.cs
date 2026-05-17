@@ -8,6 +8,7 @@ using MovieApi.DTOs;
 using MovieApi.Models;
 using System.Text.Json;
 using System;
+using BCrypt.Net;
 
 namespace MovieApi.Services
 {
@@ -43,9 +44,9 @@ namespace MovieApi.Services
             try
             {
                 var profile = await _context.Profiles
-                    .FirstOrDefaultAsync(p => p.Email == request.Email && p.Password == request.Password);
+                    .FirstOrDefaultAsync(p => p.Email == request.Email);
 
-                if (profile == null)
+                if (profile == null || !BCrypt.Net.BCrypt.Verify(request.Password, profile.Password))
                 {
                     Console.WriteLine($"[Login] No se encontró el perfil o contraseña incorrecta para: {request.Email}");
                     return null;
@@ -113,7 +114,7 @@ namespace MovieApi.Services
                         Email = request.Email,
                         Username = request.Username,
                         FullName = request.FullName,
-                        Password = request.Password,
+                        Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
