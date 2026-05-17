@@ -72,6 +72,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IVertexAIService, VertexAIService>();
+builder.Services.AddScoped<ISendGridEmailService, SendGridEmailService>();
 
 // Authentication Configuration
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -110,10 +111,11 @@ app.Use(async (context, next) =>
                 Action = "system_error",
                 Status = "error",
                 ErrorMessage = ex.Message,
-                Metadata = JsonSerializer.Serialize(new { 
-                    path = context.Request.Path.Value, 
+                Metadata = JsonSerializer.Serialize(new
+                {
+                    path = context.Request.Path.Value,
                     method = context.Request.Method,
-                    stackTrace = ex.StackTrace 
+                    stackTrace = ex.StackTrace
                 }),
                 CreatedAt = DateTime.UtcNow
             };
@@ -167,30 +169,39 @@ app.UseAuthorization();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try {
+    try
+    {
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password text NOT NULL DEFAULT 'temporal';");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;");
-        await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movie_reviews ALTER COLUMN rating TYPE numeric(3,1);");
+        await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email_confirmed boolean NOT NULL DEFAULT false;");
+        await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS verification_code text;");
         
+        // AUTO-CONFIRM: Solo para usuarios antiguos que no tienen código de verificación
+        await context.Database.ExecuteSqlRawAsync("UPDATE public.profiles SET email_confirmed = true WHERE verification_code IS NULL AND email_confirmed = false;");
+
+        await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movie_reviews ALTER COLUMN rating TYPE numeric(3,1);");
+
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS insertion_latency_ms integer;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS embedding_latency_ms integer;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS insertion_status text DEFAULT 'success';");
-        
+
         // Final dimension adjustment for Vertex AI (768)
-        try {
+        try
+        {
             await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS embedding vector(768);");
-        } catch { }
+        }
+        catch { }
 
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movie_reviews DROP CONSTRAINT IF EXISTS movie_reviews_rating_check;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movie_reviews ADD CONSTRAINT movie_reviews_rating_check CHECK (rating >= 0 AND rating <= 10);");
-        
+
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS latency_ms integer;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS records_affected integer DEFAULT 0;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS error_code text;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS metadata jsonb;");
 
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs DROP CONSTRAINT IF EXISTS operation_logs_action_check;");
-        
+
         await context.Database.ExecuteSqlRawAsync("DROP VIEW IF EXISTS public.v_dashboard_summary;");
         await context.Database.ExecuteSqlRawAsync("DROP VIEW IF EXISTS public.v_movies_per_user;");
         await context.Database.ExecuteSqlRawAsync("DROP VIEW IF EXISTS public.v_recent_movies;");
@@ -254,9 +265,11 @@ using (var scope = app.Services.CreateScope())
             FROM public.operation_logs
             GROUP BY action;
         ");
-        
+
         Console.WriteLine("[System] DB Fix and Dashboard views updated successfully.");
-    } catch (Exception ex) {
+    }
+    catch (Exception ex)
+    {
         Console.WriteLine($@"[System] DB Fix Error: {ex.Message}");
     }
 }

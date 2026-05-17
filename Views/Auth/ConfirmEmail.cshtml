@@ -1,0 +1,79 @@
+@model MovieApi.Models.ViewModels.ConfirmEmailViewModel
+@{
+    ViewData["Title"] = "Confirmar Correo";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="premium-form-container p-5 rounded-4 shadow-lg">
+            <div class="text-center mb-5">
+                <h1 class="display-6 fw-bold text-white uppercase letter-spacing-5">CONFIRMAR <span class="text-primary">CORREO</span></h1>
+                <div class="hero-divider"></div>
+                <p class="text-muted small">Hemos enviado un código de 6 dígitos a <br/><strong>@Model.Email</strong></p>
+            </div>
+
+            <form asp-action="ConfirmEmail" method="post">
+                <input type="hidden" asp-for="Email" />
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                
+                <div class="mb-4">
+                    <label asp-for="Code" class="form-label-premium">CÓDIGO DE VERIFICACIÓN</label>
+                    <input asp-for="Code" class="form-control-premium w-100 text-center" placeholder="123456" maxlength="6" style="font-size: 1.5rem; letter-spacing: 10px;" />
+                    <span asp-validation-for="Code" class="text-danger small"></span>
+                </div>
+
+                <div class="d-grid gap-2 mt-5">
+                    <button type="submit" class="btn btn-primary py-3">VERIFICAR CUENTA</button>
+                </div>
+            </form>
+            
+            <hr class="border-secondary my-4 opacity-25" />
+            <div class="text-center">
+                <p class="small text-muted mb-0">¿NO RECIBISTE EL CÓDIGO? <a href="#" class="text-primary fw-bold text-decoration-none ms-2">REENVIAR</a></p>
+                <p class="small text-muted mt-2"><a asp-action="Register" class="text-muted text-decoration-none">VOLVER AL REGISTRO</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .premium-form-container {
+        background: linear-gradient(145deg, #16161a 0%, #0b0b0d 100%);
+        border: 1px solid var(--gx-border);
+        position: relative;
+    }
+    .form-label-premium {
+        font-weight: 800;
+        font-size: 0.7rem;
+        letter-spacing: 2px;
+        color: var(--gx-text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    .form-control-premium {
+        background: var(--gx-dark) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        color: white !important;
+        transition: 0.3s;
+    }
+    .form-control-premium:focus {
+        border-color: var(--gx-red) !important;
+        box-shadow: 0 0 15px rgba(250, 30, 78, 0.15) !important;
+        outline: none;
+    }
+    .letter-spacing-5 { letter-spacing: 5px; }
+    .hero-divider {
+        width: 40px;
+        height: 3px;
+        background: var(--gx-red);
+        margin: 15px auto;
+        box-shadow: 0 0 10px var(--gx-red);
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

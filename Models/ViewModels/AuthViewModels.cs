@@ -39,4 +39,15 @@ namespace MovieApi.Models.ViewModels
         [Display(Name = "Confirmar Contraseña")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }
+
+    public class ConfirmEmailViewModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El código de verificación es obligatorio")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "El código debe tener 6 dígitos")]
+        public string Code { get; set; } = string.Empty;
+    }
 }

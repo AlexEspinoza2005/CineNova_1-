@@ -66,7 +66,7 @@ namespace MovieApi.Controllers
 
             if (response == null)
             {
-                ModelState.AddModelError(string.Empty, "Credenciales inválidas");
+                ModelState.AddModelError(string.Empty, "Credenciales inválidas o correo no verificado");
                 return View(model);
             }
 
@@ -155,8 +155,32 @@ namespace MovieApi.Controllers
                 return View(model);
             }
 
-            TempData["SuccessMessage"] = "Registro exitoso. Ya puedes iniciar sesión.";
-            return RedirectToAction("Login");
+            TempData["UserEmail"] = model.Email;
+            return RedirectToAction("ConfirmEmail", new { email = model.Email });
+        }
+
+        [HttpGet]
+        public IActionResult ConfirmEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email)) return RedirectToAction("Register");
+            return View(new ConfirmEmailViewModel { Email = email });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ConfirmEmail(ConfirmEmailViewModel model)
+        {
+            if (!ModelState.IsValid) return View(model);
+
+            var result = await _authService.VerifyEmailAsync(model.Email, model.Code);
+
+            if (result)
+            {
+                TempData["SuccessMessage"] = "Correo verificado exitosamente. Ya puedes iniciar sesión.";
+                return RedirectToAction("Login");
+            }
+
+            ModelState.AddModelError(string.Empty, "Código de verificación inválido");
+            return View(model);
         }
 
         [HttpGet]

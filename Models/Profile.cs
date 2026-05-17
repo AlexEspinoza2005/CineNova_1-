@@ -48,6 +48,12 @@ namespace MovieApi.Models
         [Column("is_active")]
         public bool IsActive { get; set; } = true;
 
+        [Column("email_confirmed")]
+        public bool EmailConfirmed { get; set; } = false;
+
+        [Column("verification_code")]
+        public string? VerificationCode { get; set; }
+
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }
 }

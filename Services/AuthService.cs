@@ -7,6 +7,7 @@ using MovieApi.Data;
 using MovieApi.DTOs;
 using MovieApi.Models;
 using System.Text.Json;
+using System;
 
 namespace MovieApi.Services
 {
@@ -14,6 +15,7 @@ namespace MovieApi.Services
     {
         Task<AuthResponse?> LoginAsync(LoginRequest request);
         Task<bool> RegisterAsync(RegisterRequest request);
+        Task<bool> VerifyEmailAsync(string email, string code);
     }
 
     public class AuthService : IAuthService
@@ -21,12 +23,18 @@ namespace MovieApi.Services
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly HttpClient _httpClient;
+        private readonly ISendGridEmailService _emailService;
 
-        public AuthService(ApplicationDbContext context, IConfiguration configuration, HttpClient httpClient)
+        public AuthService(
+            ApplicationDbContext context,
+            IConfiguration configuration,
+            HttpClient httpClient,
+            ISendGridEmailService emailService)
         {
             _context = context;
             _configuration = configuration;
             _httpClient = httpClient;
+            _emailService = emailService;
         }
 
         public async Task<AuthResponse?> LoginAsync(LoginRequest request)
@@ -46,6 +54,12 @@ namespace MovieApi.Services
                 if (!profile.IsActive)
                 {
                     Console.WriteLine($"[Login] Usuario baneado intentando ingresar: {request.Email}");
+                    return null;
+                }
+
+                if (!profile.EmailConfirmed)
+                {
+                    Console.WriteLine($"[Login] Correo no confirmado para: {request.Email}");
                     return null;
                 }
 
@@ -139,6 +153,44 @@ namespace MovieApi.Services
                     });
 
                     await _context.SaveChangesAsync();
+
+                    // Generar código de verificación de 6 dígitos
+                    var verificationCode = new Random().Next(100000, 999999).ToString();
+                    profile.VerificationCode = verificationCode;
+                    _context.Profiles.Update(profile);
+                    await _context.SaveChangesAsync();
+
+                    // --- ENVÍO DE CORREO DE VERIFICACIÓN ---
+                    try
+                    {
+                        string subject = "Verifica tu cuenta en CineNova";
+                        string nombreUsuario = !string.IsNullOrEmpty(request.FullName) ? request.FullName : request.Username;
+
+                        string htmlContent = $@"
+                            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 20px; border-radius: 10px;'>
+                                <h2 style='color: #e50914; text-align: center;'>¡Bienvenido a CineNova!</h2>
+                                <p>Hola {nombreUsuario}, gracias por registrarte. Para completar tu registro, utiliza el siguiente código de verificación:</p>
+                                <div style='background: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px;'>
+                                    {verificationCode}
+                                </div>
+                                <p style='margin-top: 20px;'>Si no solicitaste este registro, puedes ignorar este correo.</p>
+                                <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
+                                <p style='font-size: 12px; color: #888; text-align: center;'>© 2026 CineNova AI. Todos los derechos reservados.</p>
+                            </div>";
+
+                        bool emailSent = await _emailService.SendEmailAsync(request.Email, subject, $"Tu código de verificación es: {verificationCode}", htmlContent);
+
+                        if (emailSent)
+                            Console.WriteLine($"[Register] Correo de verificación enviado a {request.Email}");
+                        else
+                            Console.WriteLine($"[Register] Falló el envío del correo de verificación a {request.Email}");
+                    }
+                    catch (Exception emailEx)
+                    {
+                        Console.WriteLine($"[Register] ERROR AL ENVIAR CORREO: {emailEx.Message}");
+                    }
+                    // -------------------------------------
+
                     await transaction.CommitAsync();
                     Console.WriteLine("[Register] Transacción completada con éxito.");
 
@@ -152,6 +204,22 @@ namespace MovieApi.Services
                     return false;
                 }
             });
+        }
+
+        public async Task<bool> VerifyEmailAsync(string email, string code)
+        {
+            var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Email == email);
+            if (profile == null || profile.VerificationCode != code)
+            {
+                return false;
+            }
+
+            profile.EmailConfirmed = true;
+            profile.VerificationCode = null; // Limpiar el código usado
+            _context.Profiles.Update(profile);
+            await _context.SaveChangesAsync();
+
+            return true;
         }
 
         private string GenerateJwtToken(Guid userId, string email, string role, string username, string? fullName, string? avatarUrl)
