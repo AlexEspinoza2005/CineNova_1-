@@ -28,6 +28,3 @@ services:
         sync: false
       - key: Supabase__Key
         sync: false
-    secretFiles:
-      - key: google-credentials.json
-        path: google-credentials.json
