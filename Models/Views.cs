@@ -21,6 +21,10 @@ namespace MovieApi.Models.Views
         public decimal? AvgInsertionLatencyMs { get; set; }
         [Column("avg_query_latency_ms")]
         public decimal? AvgQueryLatencyMs { get; set; }
+        [Column("avg_embedding_latency_ms")]
+        public decimal? AvgEmbeddingLatencyMs { get; set; }
+        [Column("total_rejected")]
+        public long? TotalRejected { get; set; }
         [Column("total_duplicates")]
         public long? TotalDuplicates { get; set; }
         [Column("total_vectors_stored")]

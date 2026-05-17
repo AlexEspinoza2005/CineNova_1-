@@ -10,6 +10,13 @@ using System.Security.Claims;
 using MovieApi.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
+// Set Google Credentials Environment Variable BEFORE building the app
+var credentialsPath = Path.Combine(Directory.GetCurrentDirectory(), "google-credentials.json");
+if (File.Exists(credentialsPath))
+{
+    Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialsPath);
+    Console.WriteLine("[System] Google AI Credentials loaded.");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,11 +69,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-
-// ... (previous code)
-
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IVertexAIService, VertexAIService>();
 
 // Authentication Configuration
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -80,9 +85,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.ExpireTimeSpan = TimeSpan.FromHours(2);
     });
-
-// (Keep JwtBearer if API still needs it, but for MVC, Cookies are better)
-// ...
 
 var app = builder.Build();
 
@@ -161,7 +163,7 @@ app.UseCors("AllowLocalhost");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// --- AUTO-FIX: Asegurar que la columna password existe y rating soporta 10.0 ---
+// --- AUTO-FIX: Database initialization and View creation ---
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -170,27 +172,32 @@ using (var scope = app.Services.CreateScope())
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movie_reviews ALTER COLUMN rating TYPE numeric(3,1);");
         
-        // Ensure movies table has latency and status columns
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS insertion_latency_ms integer;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS embedding_latency_ms integer;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS insertion_status text DEFAULT 'success';");
+        
+        // Final dimension adjustment for Vertex AI (768)
+        try {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS embedding vector(768);");
+        } catch { }
 
-        // Fix rating constraint to allow 0-10
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movie_reviews DROP CONSTRAINT IF EXISTS movie_reviews_rating_check;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.movie_reviews ADD CONSTRAINT movie_reviews_rating_check CHECK (rating >= 0 AND rating <= 10);");
         
-        // Ensure operation_logs has all required columns
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS latency_ms integer;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS records_affected integer DEFAULT 0;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS error_code text;");
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs ADD COLUMN IF NOT EXISTS metadata jsonb;");
 
-        // Fix operation_logs constraint to allow system_error and others
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE public.operation_logs DROP CONSTRAINT IF EXISTS operation_logs_action_check;");
         
-        // --- CREATE DASHBOARD VIEWS ---
+        await context.Database.ExecuteSqlRawAsync("DROP VIEW IF EXISTS public.v_dashboard_summary;");
+        await context.Database.ExecuteSqlRawAsync("DROP VIEW IF EXISTS public.v_movies_per_user;");
+        await context.Database.ExecuteSqlRawAsync("DROP VIEW IF EXISTS public.v_recent_movies;");
+        await context.Database.ExecuteSqlRawAsync("DROP VIEW IF EXISTS public.v_errors_by_action;");
+
         await context.Database.ExecuteSqlRawAsync(@"
-            CREATE OR REPLACE VIEW public.v_dashboard_summary AS
+            CREATE VIEW public.v_dashboard_summary AS
             SELECT 
                 (SELECT COUNT(*) FROM public.movies) as total_movies,
                 (SELECT COUNT(*) FROM public.profiles) as total_users,
@@ -202,13 +209,15 @@ using (var scope = app.Services.CreateScope())
                 END as success_rate_pct,
                 COALESCE(ROUND((SELECT AVG(insertion_latency_ms) FROM public.movies)::numeric, 2), 0) as avg_insertion_latency_ms,
                 COALESCE(ROUND((SELECT AVG(response_latency_ms) FROM public.agent_queries)::numeric, 2), 0) as avg_query_latency_ms,
+                COALESCE(ROUND((SELECT AVG(embedding_latency_ms) FROM public.movies)::numeric, 2), 0) as avg_embedding_latency_ms,
+                (SELECT COUNT(*) FROM public.operation_logs WHERE action = 'create_movie' AND status = 'error') as total_rejected,
                 (SELECT COUNT(*) FROM public.operation_logs WHERE action = 'create_movie' AND status = 'error' AND metadata::text LIKE '%duplicate%') as total_duplicates,
-                (SELECT COUNT(*) FROM public.movies WHERE vector_id IS NOT NULL) as total_vectors_stored
+                (SELECT COUNT(*) FROM public.movies WHERE embedding IS NOT NULL) as total_vectors_stored
             FROM (SELECT 1) dummy;
         ");
 
         await context.Database.ExecuteSqlRawAsync(@"
-            CREATE OR REPLACE VIEW public.v_movies_per_user AS
+            CREATE VIEW public.v_movies_per_user AS
             SELECT 
                 p.id as user_id, 
                 p.email, 
@@ -223,7 +232,7 @@ using (var scope = app.Services.CreateScope())
         ");
 
         await context.Database.ExecuteSqlRawAsync(@"
-            CREATE OR REPLACE VIEW public.v_recent_movies AS
+            CREATE VIEW public.v_recent_movies AS
             SELECT 
                 m.id, m.title, m.genre, m.director, m.year, m.insertion_status, 
                 m.insertion_latency_ms, m.embedding_latency_ms, m.ingestion_date, m.created_at,
@@ -235,7 +244,7 @@ using (var scope = app.Services.CreateScope())
         ");
 
         await context.Database.ExecuteSqlRawAsync(@"
-            CREATE OR REPLACE VIEW public.v_errors_by_action AS
+            CREATE VIEW public.v_errors_by_action AS
             SELECT 
                 action,
                 COUNT(*) as total,
@@ -246,7 +255,7 @@ using (var scope = app.Services.CreateScope())
             GROUP BY action;
         ");
         
-        Console.WriteLine("[System] DB Fix: Columna 'password', 'rating', 'latency_ms', constraints y vistas del dashboard ajustadas.");
+        Console.WriteLine("[System] DB Fix and Dashboard views updated successfully.");
     } catch (Exception ex) {
         Console.WriteLine($@"[System] DB Fix Error: {ex.Message}");
     }

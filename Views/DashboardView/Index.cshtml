@@ -128,28 +128,50 @@
     <div class="tab-pane fade show active" id="metrics">
         <div class="row g-4">
             <div class="col-lg-4">
-                <div class="card h-100">
-                    <div class="card-header">Latencia de Red</div>
-                    <div class="card-body text-center py-5">
-                        <h1 class="display-3 fw-bold text-primary m-0">@Model?.AvgInsertionLatencyMs</h1>
-                        <span class="text-muted uppercase letter-spacing-1">ms avg insertion</span>
-                        <div class="mt-4 pt-4 border-top border-secondary">
-                            <h2 class="fw-bold">@Model?.TotalVectorsStored</h2>
-                            <span class="text-muted small">Vectores en Memoria</span>
+                <div class="card h-100 border-0 bg-dark shadow-sm">
+                    <div class="card-header border-secondary bg-transparent text-primary fw-bold uppercase letter-spacing-1">
+                        <i class="bi bi-cpu me-2"></i>Rendimiento Vectorial
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4 text-center">
+                            <span class="text-muted small d-block mb-1">LATENCIA INSERCIÓN</span>
+                            <h2 class="fw-900 text-white m-0">@Model?.AvgInsertionLatencyMs <small class="fs-6 text-muted">ms</small></h2>
+                        </div>
+                        <div class="mb-4 text-center">
+                            <span class="text-muted small d-block mb-1">LATENCIA CONSULTA (SEMÁNTICA)</span>
+                            <h2 class="fw-900 text-info m-0">@Model?.AvgQueryLatencyMs <small class="fs-6 text-muted">ms</small></h2>
+                        </div>
+                        <div class="mb-4 text-center">
+                            <span class="text-muted small d-block mb-1">GENERACIÓN EMBEDDING</span>
+                            <h2 class="fw-900 text-warning m-0">@Model?.AvgEmbeddingLatencyMs <small class="fs-6 text-muted">ms</small></h2>
+                        </div>
+                        <div class="pt-4 border-top border-secondary text-center">
+                            <h4 class="fw-bold text-success m-0">@Model?.TotalVectorsStored</h4>
+                            <span class="text-muted small uppercase">Vectores en Supabase</span>
+                        </div>
+                        <div class="mt-4 pt-4 border-top border-secondary row text-center">
+                            <div class="col-6 border-end border-secondary">
+                                <h5 class="text-danger m-0">@Model?.TotalRejected</h5>
+                                <span class="text-muted" style="font-size: 0.6rem;">RECHAZADOS</span>
+                            </div>
+                            <div class="col-6">
+                                <h5 class="text-warning m-0">@Model?.TotalDuplicates</h5>
+                                <span class="text-muted" style="font-size: 0.6rem;">DUPLICADOS</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>Ingestas Recientes</span>
-                        <i class="bi bi-hdd-network"></i>
+                <div class="card border-0 bg-dark shadow-sm">
+                    <div class="card-header border-secondary bg-transparent d-flex justify-content-between align-items-center">
+                        <span class="text-primary fw-bold uppercase letter-spacing-1">Buffer de Ingesta (Embeddings)</span>
+                        <span class="badge bg-primary rounded-pill small">Top 10 Recientes</span>
                     </div>
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-dark table-hover mb-0" style="font-size: 0.85rem;">
                             <thead>
-                                <tr><th>Data</th><th>Usuario</th><th>Status</th><th>Time</th></tr>
+                                <tr class="text-muted"><th>Registro</th><th>ID Vectorial</th><th>Embedding Latency</th><th>Ingesta Status</th></tr>
                             </thead>
                             <tbody>
                                 @if (recentMovies != null) {
@@ -157,15 +179,22 @@
                                         <tr>
                                             <td>
                                                 <div class="fw-bold text-light">@movie.Title</div>
-                                                <div class="small text-muted">@movie.Genre | @movie.Year</div>
+                                                <div class="text-muted small">@@@movie.Username</div>
                                             </td>
-                                            <td class="small">@@@movie.Username</td>
+                                            <td class="text-info font-monospace" style="font-size: 0.7rem;">@(movie.Id.ToString().Substring(0,8))...vec</td>
                                             <td>
-                                                <span class="badge @(movie.InsertionStatus == "success" ? "bg-success" : "bg-danger") text-white fw-normal">
-                                                    @movie.InsertionStatus
+                                                <div class="d-flex align-items-center">
+                                                    <span class="me-2">@movie.EmbeddingLatencyMs ms</span>
+                                                    <div class="progress flex-grow-1" style="height: 2px; width: 40px; background: #222;">
+                                                        <div class="progress-bar bg-warning" style="width: @(movie.EmbeddingLatencyMs / 2)%"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge rounded-pill @(movie.InsertionStatus == "success" ? "bg-success-subtle text-success border border-success" : "bg-danger-subtle text-danger border border-danger") px-2 py-1" style="font-size: 0.65rem;">
+                                                    @movie.InsertionStatus.ToUpper()
                                                 </span>
                                             </td>
-                                            <td class="small text-muted">@(TimeZoneInfo.ConvertTimeFromUtc(movie.CreatedAt, TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time")).ToString("HH:mm dd/MM"))</td>
                                         </tr>
                                     }
                                 }

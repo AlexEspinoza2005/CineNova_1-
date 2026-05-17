@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Pgvector;
 
 namespace MovieApi.Models
 {
@@ -37,6 +38,9 @@ namespace MovieApi.Models
 
         [Column("cover_url")]
         public string? CoverUrl { get; set; }
+
+        [Column("embedding", TypeName = "vector(768)")]
+        public Vector? Embedding { get; set; }
 
         [Column("vector_id")]
         public string? VectorId { get; set; }

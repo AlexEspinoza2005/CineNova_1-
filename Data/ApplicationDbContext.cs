@@ -64,6 +64,9 @@ namespace MovieApi.Data
                     .HasColumnType("date")
                     .ValueGeneratedOnAddOrUpdate(); // Computed column handled by DB
 
+                entity.Property(e => e.Embedding)
+                    .HasColumnType("vector(768)");
+
                 entity.HasOne(d => d.Profile)
                     .WithMany()
                     .HasForeignKey(d => d.UserId)

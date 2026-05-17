@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using MovieApi.Data;
 using MovieApi.DTOs;
 using MovieApi.Models;
+using Pgvector.EntityFrameworkCore;
+using MovieApi.Services;
 
 namespace MovieApi.Controllers
 {
@@ -15,10 +17,12 @@ namespace MovieApi.Controllers
     public class AgentController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IVertexAIService _vertexAI;
 
-        public AgentController(ApplicationDbContext context)
+        public AgentController(ApplicationDbContext context, IVertexAIService vertexAI)
         {
             _context = context;
+            _vertexAI = vertexAI;
         }
 
         [HttpPost("query")]
@@ -28,87 +32,205 @@ namespace MovieApi.Controllers
             var isAdmin = User.IsInRole("admin");
             var stopwatch = Stopwatch.StartNew();
             
-            string question = request.Question.ToLower();
-            string answer = "Lo siento, no entiendo esa pregunta. Intenta con 'cuántos registros', 'últimos', 'errores', 'latencia' o 'similares'.";
+            string question = request.Question.ToLower().Trim();
+            string answer = "";
             object? data = null;
             int resultsCount = 0;
+            bool isIntentDetected = false;
 
-            if (question.Contains("cuántos registros") || question.Contains("mis registros"))
+            // --- PASO 1: RECOGER CONTEXTO DINÁMICO ---
+            var metrics = await _context.VDashboardSummaries.AsNoTracking().FirstOrDefaultAsync();
+            var movieCount = await _context.Movies.CountAsync(m => m.UserId == userId);
+            
+            string contextData = $"Métricas actuales: Total películas global={metrics?.TotalMovies}, " +
+                                $"Tus películas={movieCount}, Latencia media={metrics?.AvgInsertionLatencyMs}ms, " +
+                                $"Vectores totales={metrics?.TotalVectorsStored}, Errores totales={metrics?.TotalErrors}.";
+
+            // --- PASO 2: GESTIÓN DE INTENCIONES ESPECÍFICAS ---
+
+            // 1. Errores reales
+            if (question.Contains("error") || question.Contains("fallo"))
             {
-                var count = await _context.Movies.CountAsync(m => m.UserId == userId);
-                answer = $"Has ingresado un total de {count} películas.";
-                resultsCount = 1;
-                data = new { total = count };
-            }
-            else if (question.Contains("últimos") || question.Contains("recientes"))
-            {
-                var movies = await _context.Movies
-                    .Where(m => m.UserId == userId)
-                    .OrderByDescending(m => m.CreatedAt)
-                    .Take(5)
-                    .Select(m => new { m.Title, m.Genre, m.CreatedAt })
-                    .ToListAsync();
-                
-                answer = movies.Any() ? "Aquí están tus últimos 5 registros." : "Aún no has ingresado ninguna película.";
-                resultsCount = movies.Count;
-                data = movies;
-            }
-            else if (question.Contains("errores"))
-            {
-                var errors = await _context.OperationLogs
-                    .Where(l => l.UserId == userId && l.Status == "error")
+                isIntentDetected = true;
+                var logs = await _context.OperationLogs
+                    .Where(l => l.Status == "error" && (isAdmin || l.UserId == userId))
                     .OrderByDescending(l => l.CreatedAt)
                     .Take(5)
+                    .Select(l => new { l.Action, l.ErrorMessage, l.CreatedAt })
                     .ToListAsync();
                 
-                answer = errors.Any() ? "He encontrado estos errores recientes en tus operaciones." : "No se han detectado errores en tus registros.";
-                resultsCount = errors.Count;
-                data = errors;
+                if (logs.Any()) {
+                    contextData += $" He encontrado estos errores reales en los logs: {string.Join(" | ", logs.Select(l => $"{l.Action}: {l.ErrorMessage}"))}.";
+                    data = logs;
+                    resultsCount = logs.Count;
+                } else {
+                    contextData += " No hay errores registrados recientemente.";
+                }
             }
-            else if (question.Contains("promedio") || question.Contains("latencia"))
+
+            // 2. Películas similares (ILIKE + Vector si es posible)
+            if (question.Contains("similares a"))
             {
-                var avg = await _context.Movies
-                    .Where(m => m.UserId == userId && m.InsertionLatencyMs.HasValue)
-                    .AverageAsync(m => (double?)m.InsertionLatencyMs) ?? 0;
+                isIntentDetected = true;
+                string searchTitle = question.Split("similares a").Last().Trim();
                 
-                answer = $"Tu tiempo promedio de inserción es de {Math.Round(avg, 2)} ms.";
-                resultsCount = 1;
-                data = new { average_latency_ms = avg };
-            }
-            else if (question.Contains("más registros") || question.Contains("quién más"))
-            {
-                if (isAdmin)
-                {
-                    var ranking = await _context.VMoviesPerUsers.Take(5).ToListAsync();
-                    answer = "Aquí tienes el ranking de los 5 usuarios con más registros.";
-                    resultsCount = ranking.Count;
-                    data = ranking;
-                }
-                else
-                {
-                    answer = "Lo siento, solo los administradores pueden consultar métricas globales de otros usuarios.";
-                }
-            }
-            else if (question.Contains("similares"))
-            {
-                // Simple ILIKE search for similarity (as a fallback for semantic search)
-                var term = question.Replace("similares", "").Replace("a", "").Trim();
-                var search = await _context.Movies
-                    .Where(m => (m.UserId == userId || isAdmin) && EF.Functions.ILike(m.Title, $"%{term}%"))
+                // Primero por texto (ILIKE)
+                var similarByText = await _context.Movies
+                    .Where(m => (m.UserId == userId || isAdmin) && EF.Functions.ILike(m.Title, $"%{searchTitle}%"))
                     .Take(5)
+                    .Select(m => new { m.Title, m.Genre, m.Year })
                     .ToListAsync();
-                
-                answer = search.Any() ? $"He encontrado estos títulos similares a '{term}'." : $"No encontré nada parecido a '{term}'.";
-                resultsCount = search.Count;
-                data = search;
+
+                if (similarByText.Any()) {
+                    contextData += $" Encontré estas películas similares por título: {string.Join(", ", similarByText.Select(s => s.Title))}.";
+                    data = similarByText;
+                    resultsCount = similarByText.Count;
+                } else {
+                    // Intento por vector si no hay match de texto
+                    try {
+                        var vectorValues = await _vertexAI.GetEmbeddingAsync(searchTitle);
+                        var queryVector = new Pgvector.Vector(vectorValues);
+                        var similarByVector = await _context.Movies
+                            .Where(m => m.UserId == userId || isAdmin)
+                            .OrderBy(m => m.Embedding!.L2Distance(queryVector))
+                            .Take(3)
+                            .Select(m => new { m.Title, m.Genre, m.Year })
+                            .ToListAsync();
+                        
+                        if (similarByVector.Any()) {
+                            contextData += $" No encontré coincidencias exactas, pero estas son semánticamente similares: {string.Join(", ", similarByVector.Select(s => s.Title))}.";
+                            data = similarByVector;
+                            resultsCount = similarByVector.Count;
+                        }
+                    } catch { }
+                }
+            }
+
+            // 3. Mis favoritos
+            if (question.Contains("mis favoritos") || question.Contains("mis películas favoritas"))
+            {
+                isIntentDetected = true;
+                var favorites = await _context.FavoriteMovies
+                    .Where(f => f.UserId == userId)
+                    .Include(f => f.Movie)
+                    .Select(f => new { Title = f.Movie!.Title, f.Movie.Genre, f.Movie.Year })
+                    .ToListAsync();
+
+                if (favorites.Any()) {
+                    contextData += $" Tus películas favoritas son: {string.Join(", ", favorites.Select(f => f.Title))}.";
+                    data = favorites;
+                    resultsCount = favorites.Count;
+                } else {
+                    contextData += " Aún no tienes películas marcadas como favoritas.";
+                }
+            }
+
+            // 4. Cuántos vectores
+            if (question.Contains("cuántos vectores") || question.Contains("total de vectores"))
+            {
+                isIntentDetected = true;
+                var vectorCount = await _context.Movies.CountAsync(m => m.Embedding != null);
+                contextData += $" Actualmente hay un total de {vectorCount} películas con vectores generados en la base de datos.";
+                resultsCount = 1;
+            }
+
+            // 5. Películas sin vector
+            if (question.Contains("películas sin vector") || question.Contains("sin procesar"))
+            {
+                isIntentDetected = true;
+                var noVectorMovies = await _context.Movies
+                    .Where(m => m.Embedding == null && (m.UserId == userId || isAdmin))
+                    .Select(m => m.Title)
+                    .ToListAsync();
+
+                if (noVectorMovies.Any()) {
+                    contextData += $" Hay {noVectorMovies.Count} películas sin vector: {string.Join(", ", noVectorMovies.Take(10))}.";
+                    resultsCount = noVectorMovies.Count;
+                } else {
+                    contextData += " Todas las películas tienen sus vectores generados correctamente.";
+                }
+            }
+
+            // 6. Métricas y registros (General)
+            if (question.Contains("métricas") || question.Contains("registros") || question.Contains("cuántos") || question.Contains("resumen"))
+            {
+                isIntentDetected = true;
+                // El contextData ya tiene la info fresca del inicio del método
+            }
+
+            // --- PASO 3: RESPUESTA INTELIGENTE ---
+            
+            // Check for previous interaction to avoid repeated greeting
+            var lastQuery = await _context.AgentQueries
+                .Where(q => q.UserId == userId)
+                .OrderByDescending(q => q.CreatedAt)
+                .FirstOrDefaultAsync();
+            
+            bool isFollowUp = lastQuery != null && (DateTime.UtcNow - lastQuery.CreatedAt).TotalMinutes < 10;
+
+            if (!isIntentDetected && !question.Contains("hola") && !question.Contains("ayuda") && !question.Contains("crear") && !question.Contains("añade"))
+            {
+                answer = "No entendí tu pregunta. Puedes preguntarme sobre tus registros, latencia, errores, favoritos o películas similares.";
+            }
+            else
+            {
+                string modifiedContext = contextData;
+                if (isFollowUp) {
+                    modifiedContext += " INSTRUCCIÓN: No saludes de nuevo, ve directo al grano ya que es una conversación en curso.";
+                }
+
+                answer = await _vertexAI.GetChatResponseAsync(request.Question, modifiedContext);
+            }
+
+            // --- PASO 4: ACCIONES AUTOMÁTICAS (Registrar película) ---
+            string[] creationKeywords = { "crear", "registra", "añade", "agrega", "inserta" };
+            bool isCreationRequest = creationKeywords.Any(k => question.Contains(k + " ") || question.EndsWith(k) || (k == "registra" && question.Contains("registra una")));
+
+            if (isCreationRequest && !question.Contains("cuántos") && !question.Contains("ver") && !question.Contains("cuál"))
+            {
+                try {
+                    string title = "";
+                    if (question.Contains("llamada")) title = question.Split("llamada").Last().Trim();
+                    else if (question.Contains("titulada")) title = question.Split("titulada").Last().Trim();
+                    else if (question.Contains("película")) title = question.Split("película").Last().Trim();
+                    else if (question.Contains("registra")) title = question.Split("registra").Last().Trim();
+                    else if (question.Contains("crear")) title = question.Split("crear").Last().Trim();
+
+                    string[] prefixes = { "un ", "una ", "de ", "sobre ", "titulada ", "llamada " };
+                    foreach (var p in prefixes) if (title.StartsWith(p)) title = title.Substring(p.Length).Trim();
+
+                    if (!string.IsNullOrEmpty(title) && title.Length >= 2)
+                    {
+                        if (title.Length > 50) title = title.Substring(0, 47) + "...";
+                        var movieEmbeddingValues = await _vertexAI.GetEmbeddingAsync(title);
+                        var newMovie = new Movie {
+                            Id = Guid.NewGuid(),
+                            UserId = userId,
+                            Title = title.ToUpper(),
+                            Genre = "IA Generated",
+                            Director = "CineNova AI v2.5",
+                            Year = DateTime.Now.Year,
+                            Synopsis = $"Registro automático vía Chat. Consulta: '{request.Question}'",
+                            Embedding = new Pgvector.Vector(movieEmbeddingValues),
+                            EmbeddingLatencyMs = (int)(stopwatch.ElapsedMilliseconds / 2),
+                            InsertionStatus = "success",
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        _context.Movies.Add(newMovie);
+                        await _context.SaveChangesAsync();
+                        answer += "\n\n✅ **[IA ACTION]** He registrado la película en la base de datos vectorial.";
+                    }
+                } catch {
+                    answer += "\n\n⚠️ (No pude completar el registro automático, verifica los permisos de Vertex AI).";
+                }
             }
 
             stopwatch.Stop();
             var latency = (int)stopwatch.ElapsedMilliseconds;
 
-            // Persist the query
-            var agentQuery = new AgentQuery
-            {
+            // Persist
+            var agentQuery = new AgentQuery {
                 UserId = userId,
                 Question = request.Question,
                 Answer = answer,
@@ -121,8 +243,7 @@ namespace MovieApi.Controllers
             _context.AgentQueries.Add(agentQuery);
             await _context.SaveChangesAsync();
 
-            return Ok(new AgentQueryResponse
-            {
+            return Ok(new AgentQueryResponse {
                 Answer = answer,
                 Data = data,
                 LatencyMs = latency
