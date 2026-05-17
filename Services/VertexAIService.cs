@@ -3,14 +3,19 @@ using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace MovieApi.Services
 {
+    public class ConversationTurn
+    {
+        public string Question { get; set; } = "";
+        public string Answer { get; set; } = "";
+    }
+
     public interface IVertexAIService
     {
         Task<float[]> GetEmbeddingAsync(string text);
-        Task<string> GetChatResponseAsync(string question, string context);
+        Task<string> GetChatResponseAsync(string question, string systemPrompt, List<ConversationTurn>? history = null);
     }
 
     public class VertexAIService : IVertexAIService
@@ -67,7 +72,7 @@ namespace MovieApi.Services
 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
                 using var doc = JsonDocument.Parse(jsonResponse);
-                
+
                 var values = doc.RootElement
                     .GetProperty("predictions")[0]
                     .GetProperty("embeddings")
@@ -82,32 +87,41 @@ namespace MovieApi.Services
             }
         }
 
-        public async Task<string> GetChatResponseAsync(string question, string contextData)
+        public async Task<string> GetChatResponseAsync(string question, string systemPrompt, List<ConversationTurn>? history = null)
         {
             try
             {
                 var accessToken = await GetAccessTokenAsync();
                 var url = $"https://{_location}-aiplatform.googleapis.com/v1/projects/{_projectId}/locations/{_location}/publishers/google/models/gemini-2.5-flash:generateContent";
 
-                var promptText = $@"Eres 'CineNova AI v3.1', un agente de última generación basado en Gemini 2.5 Flash.
-                CONTEXTO ACTUAL DEL SISTEMA: {contextData}
+                // Construir historial de conversación
+                var contents = new List<object>();
 
-                INSTRUCCIONES PRO:
-                1. Analiza los datos del sistema y responde con autoridad técnica pero amabilidad.
-                2. Si el usuario pide registrar algo, confirma que has iniciado el proceso.
-                3. Usa los indicadores de latencia para comentar sobre la salud del sistema.
+                // Agregar historial previo
+                if (history != null && history.Any())
+                {
+                    foreach (var turn in history)
+                    {
+                        contents.Add(new { role = "user", parts = new[] { new { text = turn.Question } } });
+                        contents.Add(new { role = "model", parts = new[] { new { text = turn.Answer } } });
+                    }
+                }
 
-                PREGUNTA: {question}";
+                // Agregar pregunta actual
+                contents.Add(new { role = "user", parts = new[] { new { text = question } } });
 
                 var requestBody = new
                 {
-                    contents = new[]
+                    system_instruction = new
                     {
-                        new
-                        {
-                            role = "user",
-                            parts = new[] { new { text = promptText } }
-                        }
+                        parts = new[] { new { text = systemPrompt } }
+                    },
+                    contents = contents,
+                    generationConfig = new
+                    {
+                        temperature = 0.7,
+                        maxOutputTokens = 1024,
+                        topP = 0.9
                     }
                 };
 
@@ -128,12 +142,12 @@ namespace MovieApi.Services
                     .GetProperty("text")
                     .GetString();
 
-                return text ?? "Lo siento, no pude generar una respuesta.";
+                return text ?? "No pude generar una respuesta.";
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Gemini Error] {ex.Message}");
-                return $"Hola, soy el asistente de CineNova. Veo que tienes {contextData}. ¿En qué puedo ayudarte hoy?";
+                return "Hubo un error al conectar con el agente. Intenta de nuevo.";
             }
         }
     }
