@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.IO;
+using System;
 
 namespace MovieApi.Services
 {
@@ -31,7 +33,16 @@ namespace MovieApi.Services
             _location = configuration["GoogleCloud:Location"] ?? "us-central1";
             _httpClient = httpClient;
 
-            var credentialsPath = Path.Combine(Directory.GetCurrentDirectory(), "google-credentials.json");
+            // 1. Intentamos leer la variable de entorno (Para Producción en Render)
+            string? credentialsPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+
+            // 2. Si está vacía (Para Desarrollo Local), usamos la ruta de tu proyecto
+            if (string.IsNullOrEmpty(credentialsPath))
+            {
+                credentialsPath = Path.Combine(Directory.GetCurrentDirectory(), "google-credentials.json");
+            }
+
+            // 3. Verificamos que el archivo exista en la ruta resuelta
             if (File.Exists(credentialsPath))
             {
                 _credential = GoogleCredential.FromFile(credentialsPath)
@@ -39,7 +50,8 @@ namespace MovieApi.Services
             }
             else
             {
-                throw new FileNotFoundException("google-credentials.json not found");
+                // Si falla, ahora el log nos dirá EXACTAMENTE dónde intentó buscarlo
+                throw new FileNotFoundException($"[VertexAI] Archivo de credenciales no encontrado. Ruta intentada: {credentialsPath}");
             }
         }
 
