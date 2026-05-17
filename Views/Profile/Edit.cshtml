@@ -1,0 +1,112 @@
+@model MovieApi.Models.ViewModels.EditProfileViewModel
+@{
+    ViewData["Title"] = "Editar Perfil";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-9">
+        <div class="premium-form-container p-5 rounded-4 shadow-lg">
+            <div class="text-center mb-5">
+                <h1 class="display-6 fw-bold text-white uppercase letter-spacing-5">CONFIGURAR <span class="text-primary">PERFIL</span></h1>
+                <div class="hero-divider"></div>
+            </div>
+
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="FullName" class="form-label-premium">NOMBRE COMPLETO</label>
+                        <input asp-for="FullName" class="form-control-premium w-100" />
+                        <span asp-validation-for="FullName" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Username" class="form-label-premium">NOMBRE DE USUARIO</label>
+                        <input asp-for="Username" class="form-control-premium w-100" />
+                        <span asp-validation-for="Username" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Bio" class="form-label-premium">BIOGRAFÍA DE SISTEMA</label>
+                    <textarea asp-for="Bio" class="form-control-premium w-100" rows="3" placeholder="Escribe algo sobre ti..."></textarea>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="City" class="form-label-premium">CIUDAD</label>
+                        <input asp-for="City" class="form-control-premium w-100" />
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Country" class="form-label-premium">PAÍS</label>
+                        <input asp-for="Country" class="form-control-premium w-100" />
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-12">
+                        <label asp-for="ImageFile" class="form-label-premium">ACTUALIZAR AVATAR <span class="opacity-25">(SUBIR ARCHIVO)</span></label>
+                        <input asp-for="ImageFile" type="file" class="form-control-premium w-100" accept="image/*" />
+                    </div>
+                    <div class="col-md-12">
+                        <label asp-for="AvatarUrl" class="form-label-premium">O URL DE IMAGEN EXTERNA</label>
+                        <input asp-for="AvatarUrl" class="form-control-premium w-100" placeholder="https://..." />
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label asp-for="FavoriteGenresString" class="form-label-premium">GÉNEROS PREFERIDOS</label>
+                    <input asp-for="FavoriteGenresString" class="form-control-premium w-100" placeholder="Acción, Ciencia Ficción, Drama..." />
+                    <div class="small text-muted mt-2 opacity-50 uppercase">SISTEMA: SEPARAR VALORES POR COMAS</div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-5 pt-4 border-top border-secondary">
+                    <a asp-action="Index" class="btn btn-outline-light px-4">CANCELAR</a>
+                    <button type="submit" class="btn btn-primary px-5 py-3">GUARDAR CAMBIOS</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .premium-form-container {
+        background: linear-gradient(145deg, #16161a 0%, #0b0b0d 100%);
+        border: 1px solid var(--gx-border);
+        position: relative;
+    }
+    .form-label-premium {
+        font-weight: 800;
+        font-size: 0.7rem;
+        letter-spacing: 2px;
+        color: var(--gx-text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    .form-control-premium {
+        background: var(--gx-dark) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        color: white !important;
+        transition: 0.3s;
+    }
+    .form-control-premium:focus {
+        border-color: var(--gx-red) !important;
+        box-shadow: 0 0 15px rgba(250, 30, 78, 0.15) !important;
+        outline: none;
+    }
+    .letter-spacing-5 { letter-spacing: 5px; }
+    .hero-divider {
+        width: 40px;
+        height: 3px;
+        background: var(--gx-red);
+        margin: 15px auto;
+        box-shadow: 0 0 10px var(--gx-red);
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

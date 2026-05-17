@@ -1,0 +1,100 @@
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+<div class="hero-section text-center py-5 mb-5">
+    <h1 class="hero-title">CINE<span class="text-primary">NOVA</span></h1>
+    <p class="hero-subtitle">TU CATÁLOGO DIGITAL DE PELÍCULAS FAVORITAS</p>
+    <div class="hero-divider"></div>
+</div>
+
+<div class="row g-4 justify-content-center">
+    <!-- Card Catálogo -->
+    <div class="col-md-4">
+        <div class="premium-card">
+            <div class="premium-card-icon"><i class="bi bi-play-circle-fill"></i></div>
+            <h3 class="premium-card-title">Explora</h3>
+            <p class="premium-card-text">Navega por una vasta colección de cine organizada y detallada.</p>
+        </div>
+    </div>
+
+    <!-- Card Dashboard -->
+    <div class="col-md-4">
+        <div class="premium-card">
+            <div class="premium-card-icon text-success"><i class="bi bi-cpu-fill"></i></div>
+            <h3 class="premium-card-title">Métricas</h3>
+            <p class="premium-card-text">Gestión avanzada de registros y análisis de datos en tiempo real.</p>
+        </div>
+    </div>
+
+    <!-- Card Agente IA -->
+    <div class="col-md-4">
+        <div class="premium-card">
+            <div class="premium-card-icon text-info"><i class="bi bi-person-check-fill"></i></div>
+            <h3 class="premium-card-title">Inteligencia</h3>
+            <p class="premium-card-text">Interactúa con herramientas inteligentes para mejorar tu experiencia.</p>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-5">
+    @if (User.Identity?.IsAuthenticated != true)
+    {
+        <p class="text-muted mb-3">Inicia sesión o regístrate para acceder a todas las funcionalidades del ecosistema.</p>
+        <div class="d-flex gap-3 justify-content-center">
+            <a asp-controller="Auth" asp-action="Register" class="btn btn-outline-light px-5">CREAR CUENTA</a>
+            <a asp-controller="Auth" asp-action="Login" class="btn btn-primary px-5">ACCEDER</a>
+        </div>
+    }
+    else
+    {
+        <a asp-controller="MoviesView" asp-action="Index" class="btn btn-primary px-5 mt-2">IR AL CATÁLOGO</a>
+    }
+</div>
+
+<style>
+    .hero-title {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 900;
+        font-size: 5.5rem;
+        letter-spacing: 12px;
+        margin-bottom: 0;
+        background: linear-gradient(180deg, #fff 40%, #555 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+        font-weight: 700;
+        letter-spacing: 6px;
+        color: var(--gx-red);
+        font-size: 0.85rem;
+    }
+    .hero-divider {
+        width: 80px;
+        height: 3px;
+        background: var(--gx-red);
+        margin: 25px auto;
+        box-shadow: 0 0 20px var(--gx-red);
+    }
+    .premium-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--gx-border);
+        border-radius: 20px;
+        padding: 3rem 2rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        transition: 0.4s;
+        position: relative;
+        overflow: hidden;
+    }
+    .premium-card:hover {
+        border-color: var(--gx-red);
+        transform: translateY(-12px);
+        background: rgba(255,255,255,0.04);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+    }
+    .premium-card-icon { font-size: 3.5rem; margin-bottom: 1.5rem; color: var(--gx-red); }
+    .premium-card-title { font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1.25rem; color: white; }
+    .premium-card-text { color: var(--gx-text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 0; }
+</style>

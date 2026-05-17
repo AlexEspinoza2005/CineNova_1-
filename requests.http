@@ -1,0 +1,84 @@
+@base_url = http://localhost:5000/api
+@token = TU_TOKEN_AQUI
+
+### AUTH: Login
+POST {{base_url}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "password123"
+}
+
+### AUTH: Register
+POST {{base_url}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "client@test.com",
+  "password": "password123",
+  "fullName": "Juan Perez"
+}
+
+### MOVIES: Listar (Admin ve todas, Client las suyas)
+GET {{base_url}}/movies
+Authorization: Bearer {{token}}
+
+### MOVIES: Crear Película (Solo Client)
+POST {{base_url}}/movies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Interstellar",
+  "genre": "Sci-Fi",
+  "director": "Christopher Nolan",
+  "year": 2014,
+  "synopsis": "Un equipo de exploradores viaja a través de un agujero de gusano en el espacio.",
+  "durationMin": 169
+}
+
+### DASHBOARD: Resumen General (Solo Admin)
+GET {{base_url}}/dashboard/summary
+Authorization: Bearer {{token}}
+
+### AGENT: Consultar registros
+POST {{base_url}}/agent/query
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "question": "¿Cuántos registros he ingresado?"
+}
+
+### AGENT: Consultar errores
+POST {{base_url}}/agent/query
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "question": "Muestra mis errores"
+}
+
+### AGENT: Consultar latencia
+POST {{base_url}}/agent/query
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "question": "¿Cuál es mi promedio de latencia?"
+}
+
+### LOGS: Ver logs (Solo Admin)
+GET {{base_url}}/operationlogs?status=error
+Authorization: Bearer {{token}}
+
+### REVIEWS: Crear Reseña
+POST {{base_url}}/movies/ID_DE_PELICULA/reviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "rating": 9.5,
+  "review": "Excelente película, muy recomendada."
+}

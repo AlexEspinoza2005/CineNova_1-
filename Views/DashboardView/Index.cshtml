@@ -1,0 +1,320 @@
+@model MovieApi.Models.Views.VDashboardSummary
+@{
+    ViewData["Title"] = "Panel de Administración";
+    var moviesPerUser = ViewBag.MoviesPerUser as List<MovieApi.Models.Views.VMoviesPerUser>;
+    var recentMovies = ViewBag.RecentMovies as List<MovieApi.Models.Views.VRecentMovie>;
+    var errorsByAction = ViewBag.ErrorsByAction as List<MovieApi.Models.Views.VErrorsByAction>;
+    var recentLogs = ViewBag.RecentLogs as List<MovieApi.Models.OperationLog>;
+    var recentReviews = ViewBag.RecentReviews as List<MovieApi.Models.MovieReview>;
+    var users = ViewBag.Users as List<MovieApi.Models.Profile>;
+}
+
+<style>
+    .command-center-header {
+        border-left: 5px solid var(--gx-red);
+        padding-left: 1.5rem;
+    }
+    .metric-card-premium {
+        background: linear-gradient(145deg, var(--gx-panel) 0%, var(--gx-grey) 100%);
+        border: 1px solid var(--gx-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .metric-card-premium::after {
+        content: ""; position: absolute; top: -50%; right: -50%; width: 100%; height: 200%;
+        background: radial-gradient(circle, rgba(250,30,78,0.05) 0%, transparent 70%);
+    }
+    .metric-value { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 2.5rem; line-height: 1; margin: 10px 0; }
+    .metric-label { text-transform: uppercase; letter-spacing: 2px; font-size: 0.7rem; font-weight: 700; color: var(--gx-text-muted); }
+    
+    .nav-command {
+        background: var(--gx-dark);
+        border: 1px solid var(--gx-border);
+        border-radius: 12px;
+        padding: 0.5rem;
+    }
+    .nav-command .nav-link {
+        border-radius: 8px !important;
+        margin: 0 4px;
+        color: var(--gx-text-muted) !important;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+    }
+    .nav-command .nav-link.active {
+        background: var(--gx-red) !important;
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(250,30,78,0.3);
+    }
+    
+    .status-badge-glow {
+        box-shadow: 0 0 10px currentColor;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-end mb-5 mt-3 command-center-header">
+    <div>
+        <h1 class="display-6 fw-bold text-light m-0">COMMAND <span class="text-primary">CENTER</span></h1>
+        <p class="text-muted small m-0 uppercase letter-spacing-2">Sistema de Monitoreo CineNova</p>
+    </div>
+    <div class="text-end">
+       
+        <span class="badge bg-dark border border-secondary text-muted px-3 py-2">
+            <i class="bi bi-broadcast text-primary me-2"></i> LIVE: @(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time")).ToString("HH:mm:ss"))
+        </span>
+    </div>
+</div>
+
+<!-- Metrics Dashboard -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="metric-card-premium">
+            <span class="metric-label">Películas</span>
+            <div class="metric-value text-white">@Model?.TotalMovies</div>
+            <div class="progress" style="height: 4px; background: #111;">
+                <div class="progress-bar bg-primary" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card-premium">
+            <span class="metric-label">Usuarios</span>
+            <div class="metric-value text-white">@Model?.TotalUsers</div>
+            <div class="progress" style="height: 4px; background: #111;">
+                <div class="progress-bar bg-info" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card-premium">
+            <span class="metric-label">Incidencias</span>
+            <div class="metric-value text-danger">@Model?.TotalErrors</div>
+            <div class="progress" style="height: 4px; background: #111;">
+                <div class="progress-bar bg-danger" style="width: @(Model?.TotalErrors > 0 ? 100 : 0)%"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card-premium">
+            <span class="metric-label">Eficiencia</span>
+            <div class="metric-value text-success">@Model?.SuccessRatePct<small class="fs-4">%</small></div>
+            <div class="progress" style="height: 4px; background: #111;">
+                <div class="progress-bar bg-success" style="width: @Model?.SuccessRatePct%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-pills nav-command mb-4" id="dashboardTabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" id="metrics-tab" data-bs-toggle="pill" data-bs-target="#metrics" type="button"><i class="bi bi-activity me-2"></i>Performance</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="users-tab" data-bs-toggle="pill" data-bs-target="#users" type="button"><i class="bi bi-people-fill me-2"></i>Directorio</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="reviews-tab" data-bs-toggle="pill" data-bs-target="#reviews" type="button"><i class="bi bi-chat-square-dots-fill me-2"></i>Social</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="logs-tab" data-bs-toggle="pill" data-bs-target="#logs" type="button"><i class="bi bi-cpu-fill me-2"></i>System Logs</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="dashboardTabsContent">
+    <!-- PERFORMANCE TAB -->
+    <div class="tab-pane fade show active" id="metrics">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header">Latencia de Red</div>
+                    <div class="card-body text-center py-5">
+                        <h1 class="display-3 fw-bold text-primary m-0">@Model?.AvgInsertionLatencyMs</h1>
+                        <span class="text-muted uppercase letter-spacing-1">ms avg insertion</span>
+                        <div class="mt-4 pt-4 border-top border-secondary">
+                            <h2 class="fw-bold">@Model?.TotalVectorsStored</h2>
+                            <span class="text-muted small">Vectores en Memoria</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between">
+                        <span>Ingestas Recientes</span>
+                        <i class="bi bi-hdd-network"></i>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr><th>Data</th><th>Usuario</th><th>Status</th><th>Time</th></tr>
+                            </thead>
+                            <tbody>
+                                @if (recentMovies != null) {
+                                    foreach (var movie in recentMovies) {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold text-light">@movie.Title</div>
+                                                <div class="small text-muted">@movie.Genre | @movie.Year</div>
+                                            </td>
+                                            <td class="small">@@@movie.Username</td>
+                                            <td>
+                                                <span class="badge @(movie.InsertionStatus == "success" ? "bg-success" : "bg-danger") text-white fw-normal">
+                                                    @movie.InsertionStatus
+                                                </span>
+                                            </td>
+                                            <td class="small text-muted">@(TimeZoneInfo.ConvertTimeFromUtc(movie.CreatedAt, TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time")).ToString("HH:mm dd/MM"))</td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- USERS TAB -->
+    <div class="tab-pane fade" id="users">
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-graph-up-arrow me-2"></i>Actividad de Nodo por Usuario</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr><th>Identidad</th><th>Volumen</th><th>Anomalías</th><th>Duplicados</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (moviesPerUser != null) {
+                            foreach (var user in moviesPerUser) {
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">@user.FullName</div>
+                                        <div class="small text-muted">@user.Email</div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center" style="max-width: 150px;">
+                                            <span class="me-2 fw-bold">@user.MovieCount</span>
+                                            <div class="progress flex-grow-1" style="height: 3px; background: #111;">
+                                                <div class="progress-bar bg-primary" style="width: @(user.MovieCount * 5)%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-danger">@user.ErrorCount</td>
+                                    <td class="text-warning">@user.DuplicateCount</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Directory / Management -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Gestión de Cuentas</span>
+                <span class="badge bg-dark border border-secondary text-muted">Directorio Activo</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Privilegios</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (users != null) {
+                            foreach (var user in users) {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 35px; height: 35px; font-weight: 800; font-size: 0.8rem;">
+                                                @(user.FullName?.Substring(0, 1) ?? "U")
+                                            </div>
+                                            <div class="fw-bold text-light">@user.FullName</div>
+                                        </div>
+                                    </td>
+                                    <td class="small text-muted">@user.Email</td>
+                                    <td>
+                                        @if (user.UserRoles != null) {
+                                            foreach (var ur in user.UserRoles) {
+                                                <span class="badge bg-dark border border-secondary text-primary fw-normal" style="font-size: 0.65rem; letter-spacing: 1px;">@ur.Role?.Name.ToUpper()</span>
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <form asp-controller="Profile" asp-action="ToggleStatus" asp-route-id="@user.Id" method="post" onsubmit="return confirm('¿Cambiar estado de acceso?')">
+                                                <button type="submit" class="btn btn-sm btn-outline-@(user.IsActive ? "danger" : "success") py-0 px-2" style="font-size: 0.7rem;">
+                                                    <i class="bi @(user.IsActive ? "bi-shield-slash" : "bi-shield-check")"></i>
+                                                </button>
+                                            </form>
+                                            <a asp-controller="Profile" asp-action="AdminEdit" asp-route-id="@user.Id" class="btn btn-sm btn-outline-light py-0 px-2" style="font-size: 0.7rem;"><i class="bi bi-gear-fill"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- REVIEWS & LOGS simplified for space -->
+    <div class="tab-pane fade" id="reviews">
+        <div class="card">
+            <div class="card-header">Feed de Interacciones</div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Pelicula</th><th>Usuario</th><th>Score</th><th>Review</th></tr></thead>
+                    <tbody>
+                        @if (recentReviews != null) {
+                            foreach (var rev in recentReviews) {
+                                <tr>
+                                    <td class="fw-bold text-primary">@rev.Movie?.Title</td>
+                                    <td class="small">@rev.Profile?.FullName</td>
+                                    <td><span class="text-warning">★ @rev.Rating</span></td>
+                                    <td class="small italic text-muted">"@rev.Review"</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tab-pane fade" id="logs">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <span>Buffer de Sistema</span>
+                <a asp-controller="OperationLogsView" asp-action="Index" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.7rem;">Registro Histórico</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>Event</th><th>Status</th><th>Context</th><th>Time</th></tr></thead>
+                    <tbody>
+                        @if (recentLogs != null) {
+    var _tz = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
+    foreach (var log in recentLogs) {
+                        <tr class="small">
+                            <td class="fw-bold text-uppercase" style="font-size: 0.7rem;">@log.Action</td>
+                            <td><span class="text-@(log.Status == "success" ? "success" : "danger")">@log.Status</span></td>
+                            <td class="text-muted">@log.ErrorMessage</td>
+                            <td class="text-muted">@log.CreatedAt.ToString("HH:mm:ss dd/MM")</td>
+                        </tr>
+    }
+}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

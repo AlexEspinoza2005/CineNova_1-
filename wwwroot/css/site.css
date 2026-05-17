@@ -1,0 +1,139 @@
+/* CineNova Premium Theme - TOTAL RESET */
+:root {
+    --gx-black: #0b0b0d;
+    --gx-dark: #121214;
+    --gx-grey: #18181b;
+    --gx-panel: #202024;
+    --gx-red: #fa1e4e;
+    --gx-red-dim: #9b1230;
+    --gx-text: #ffffff;
+    --gx-text-muted: #94949e;
+    --gx-border: #2d2d33;
+}
+
+/* Global Reset */
+html, body {
+    background-color: var(--gx-black) !important;
+    color: var(--gx-text) !important;
+    font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+/* Unified Premium Form Container */
+.form-label-premium {
+    font-weight: 800;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--gx-text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+/* Star Rating Component */
+.star-rating-container {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    user-select: none;
+}
+
+.stars-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 4px;
+}
+
+.star-wrapper {
+    position: relative;
+    font-size: 1.8rem;
+    cursor: default;
+    color: var(--gx-border);
+    transition: all 0.2s ease;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+}
+
+.star-rating-container:not([data-readonly="true"]) .star-wrapper {
+    cursor: pointer;
+}
+
+.star-wrapper.active,
+.star-wrapper.full,
+.star-wrapper.half {
+    color: #ffc107;
+    filter: drop-shadow(0 0 5px rgba(255, 193, 7, 0.3));
+}
+
+.star-part {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    z-index: 10;
+}
+
+    .star-part.left {
+        left: 0;
+    }
+
+    .star-part.right {
+        left: 50%;
+    }
+
+.star-rating-container:not([data-readonly="true"]) .star-wrapper:hover {
+    transform: scale(1.15);
+}
+
+.rating-display-val {
+    font-weight: 800;
+    color: var(--gx-red);
+    font-size: 1.2rem;
+    margin-top: 5px;
+}
+
+/* Helpers */
+.letter-spacing-5 {
+    letter-spacing: 5px;
+}
+
+.hero-divider {
+    width: 40px;
+    height: 3px;
+    background: var(--gx-red);
+    margin: 15px auto;
+    box-shadow: 0 0 10px var(--gx-red);
+}
+/* Premium Form Container */
+.premium-form-container {
+    background: linear-gradient(145deg, var(--gx-panel) 0%, var(--gx-grey) 100%);
+    border: 1px solid var(--gx-border);
+}
+
+.form-control-premium {
+    background: var(--gx-black) !important;
+    border: 1px solid var(--gx-border) !important;
+    border-radius: 8px !important;
+    color: var(--gx-text) !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+    transition: border-color 0.2s ease !important;
+    width: 100%;
+    display: block;
+}
+
+    .form-control-premium:focus {
+        border-color: var(--gx-red) !important;
+        box-shadow: 0 0 0 3px rgba(250, 30, 78, 0.15) !important;
+        outline: none !important;
+        background: var(--gx-black) !important;
+        color: var(--gx-text) !important;
+    }
+
+    .form-control-premium::placeholder {
+        color: var(--gx-text-muted) !important;
+        opacity: 0.6 !important;
+    }

@@ -1,0 +1,240 @@
+@model MovieApi.Models.ViewModels.MovieViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    var userLists = ViewBag.UserLists as List<MovieApi.Models.MovieList>;
+    var isFavorite = (bool)(ViewBag.IsFavorite ?? false);
+    var userReview = ViewBag.UserReview as MovieApi.Models.MovieReview;
+    
+    // Helper to render the new 10-star component
+    string RenderStarRating(decimal rating, bool isReadOnly = true, string inputName = "Rating") {
+        var ratingStr = rating.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+        var readonlyAttr = isReadOnly ? "data-readonly=\"true\"" : "data-readonly=\"false\"";
+        
+        var html = $"<div class=\"star-rating-container\" data-rating=\"{ratingStr}\" {readonlyAttr}>";
+        html += "<div class=\"stars-row\">";
+        for (int i = 1; i <= 10; i++) {
+            html += "<div class=\"star-wrapper\">";
+            if (!isReadOnly) {
+                html += "<div class=\"star-part left\"></div><div class=\"star-part right\"></div>";
+            }
+            html += "<i class=\"bi bi-star star-icon\"></i></div>";
+        }
+        html += "</div>";
+        html += $"<div class=\"rating-display-val\">{ratingStr}</div>";
+        if (!isReadOnly) {
+            html += $"<input type=\"hidden\" name=\"{inputName}\" class=\"rating-value\" value=\"{ratingStr}\">";
+        }
+        html += "</div>";
+        return html;
+    }
+}
+
+<div class="row">
+    <div class="col-md-4">
+        @if (!string.IsNullOrEmpty(Model.CoverUrl))
+        {
+            <img src="@Model.CoverUrl" class="img-fluid rounded shadow movie-details-img" alt="@Model.Title">
+        }
+        else
+        {
+            <div class="bg-secondary text-white d-flex align-items-center justify-content-center rounded shadow movie-details-img" style="height: 500px;">
+                <i class="bi bi-image fs-1"></i>
+            </div>
+        }
+    </div>
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="display-4 fw-bold text-light">@Model.Title</h1>
+                <p class="text-muted fs-5">@Model.Director | @Model.Year | @Model.Genre</p>
+                <div class="mb-3">
+                    @Html.Raw(RenderStarRating(Model.AverageRating))
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="badge bg-primary fs-4 mb-2">
+                    <i class="bi bi-star-fill"></i> @Model.AverageRating
+                </div>
+                <p class="small text-muted">@Model.Reviews?.Count reseñas</p>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mb-4">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                if (isFavorite)
+                {
+                    <form asp-controller="FavoritesView" asp-action="Remove" asp-route-movieId="@Model.Id" method="post">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-heart-fill"></i> Quitar de Favoritos
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-controller="FavoritesView" asp-action="Add" asp-route-movieId="@Model.Id" method="post">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-heart"></i> Agregar a Favoritos
+                        </button>
+                    </form>
+                }
+
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-plus-square"></i> Agregar a Lista
+                    </button>
+                    <ul class="dropdown-menu shadow">
+                        @if (userLists != null && userLists.Any())
+                        {
+                            foreach (var list in userLists)
+                            {
+                                <li>
+                                    <form asp-controller="ListsView" asp-action="AddMovie" asp-route-id="@list.Id" asp-route-movieId="@Model.Id" method="post">
+                                        <button type="submit" class="dropdown-item">@list.Name</button>
+                                    </form>
+                                </li>
+                            }
+                        }
+                        else
+                        {
+                            <li><a class="dropdown-item disabled small text-muted">No tienes listas creadas</a></li>
+                        }
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item small text-primary" asp-controller="ListsView" asp-action="Create"><i class="bi bi-plus-circle"></i> Crear nueva lista</a></li>
+                    </ul>
+                </div>
+            }
+        </div>
+
+        <hr class="border-secondary" />
+        
+        <h4 class="fw-bold text-primary">Sinopsis</h4>
+        <p class="lead text-light">@Model.Synopsis</p>
+        
+        @if (Model.DurationMin.HasValue)
+        {
+            <p class="text-muted"><strong>Duración:</strong> @Model.DurationMin.Value minutos</p>
+        }
+
+        <div class="mt-4">
+            <a asp-controller="MoviesView" asp-action="Index" class="btn btn-outline-light">Volver al Catálogo</a>
+            @if (User.IsInRole("admin") || Model.UserId.ToString() == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+            {
+                <a asp-controller="MoviesView" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-secondary ms-2">Editar</a>
+                <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteModal">Eliminar</button>
+            }
+        </div>
+
+        <hr class="my-5 border-secondary" />
+
+        <!-- User Review Interaction -->
+        <div class="card border-0 shadow mb-5">
+            <div class="card-body p-4">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    if (userReview == null)
+                    {
+                        <h4 class="fw-bold mb-3 text-light"><i class="bi bi-chat-left-text text-primary"></i> Deja tu reseña</h4>
+                        <form asp-controller="ReviewsView" asp-action="Create" method="post">
+                            <input type="hidden" name="movieId" value="@Model.Id" />
+                            <div class="mb-3 text-center">
+                                <label class="form-label fw-bold d-block text-muted">Calificación</label>
+                                @Html.Raw(RenderStarRating(5.0m, false))
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted">Tu comentario</label>
+                                <textarea name="Review" class="form-control" rows="3" placeholder="¿Qué te pareció la película?"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary px-4 w-100 shadow">Enviar Reseña</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="fw-bold mb-0 text-success"><i class="bi bi-check-circle-fill"></i> Ya has calificado esta película</h4>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#editReviewForm">Editar</button>
+                                <form asp-controller="ReviewsView" asp-action="Delete" asp-route-id="@userReview.Id" method="post" onsubmit="return confirm('¿Borrar tu reseña?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Edit Form (Collapsed) -->
+                        <div class="collapse mt-3" id="editReviewForm">
+                            <form asp-controller="ReviewsView" asp-action="Edit" asp-route-id="@userReview.Id" method="post">
+                                <div class="mb-3 text-center">
+                                    <label class="form-label fw-bold text-muted">Calificación</label>
+                                    @Html.Raw(RenderStarRating(userReview.Rating, false))
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted">Tu comentario</label>
+                                    <textarea name="Review" class="form-control" rows="3">@userReview.Review</textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
+                            </form>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center py-3">
+                        <p class="mb-2 text-muted">Inicia sesión para calificar esta película.</p>
+                        <a asp-controller="Auth" asp-action="Login" class="btn btn-primary btn-sm">Ir a Login</a>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <h3 class="mb-4 text-light">Todas las Reseñas</h3>
+        @if (Model.Reviews != null && Model.Reviews.Any())
+        {
+            foreach (var review in Model.Reviews)
+            {
+                <div class="card mb-3 shadow border-0">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <div>
+                                <h6 class="fw-bold mb-0 text-light">@(review.Profile?.FullName ?? review.Profile?.Username ?? "Usuario")</h6>
+                                <div class="small">
+                                    @Html.Raw(RenderStarRating(review.Rating))
+                                </div>
+                            </div>
+                            <span class="small text-muted">@review.CreatedAt.ToString("dd/MM/yyyy")</span>
+                        </div>
+                        <p class="mb-0 text-light opacity-75">"@review.Review"</p>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-muted italic">Aún no hay reseñas para esta película. ¡Sé el primero en calificarla!</p>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <!-- StarRating initialized in site.js -->
+}
+
+<!-- Delete Movie Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-light">
+                ¿Estás seguro de que deseas eliminar esta película? Esta acción no se puede deshacer.
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <form asp-controller="MoviesView" asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger px-4">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

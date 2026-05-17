@@ -1,0 +1,83 @@
+@model List<MovieApi.Models.MovieList>
+@{
+    ViewData["Title"] = "Mis Listas";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-5 mt-3">
+    <h1 class="display-5 fw-bold text-light m-0">MIS <span class="text-primary">COLECCIONES</span></h1>
+    <a asp-action="Create" class="btn btn-primary px-4">
+        <i class="bi bi-plus-lg me-2"></i> NUEVA LISTA
+    </a>
+</div>
+
+<div class="row g-4">
+    @if (Model.Any())
+    {
+        foreach (var list in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="list-premium-card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="list-icon-box">
+                                <i class="bi bi-collection-play-fill"></i>
+                            </div>
+                            <span class="badge @(list.IsPublic ? "bg-success" : "bg-dark border border-secondary text-muted") small">
+                                @(list.IsPublic ? "PÚBLICA" : "PRIVADA")
+                            </span>
+                        </div>
+                        <h4 class="fw-bold text-white mb-2">@list.Name</h4>
+                        <p class="text-muted small mb-4" style="min-height: 45px;">@list.Description</p>
+                        
+                        <div class="d-flex gap-2 pt-3 border-top border-secondary">
+                            <a asp-action="Details" asp-route-id="@list.Id" class="btn btn-sm btn-primary flex-grow-1">ABRIR</a>
+                            <div class="btn-group">
+                                <a asp-action="Edit" asp-route-id="@list.Id" class="btn btn-sm btn-outline-light"><i class="bi bi-pencil"></i></a>
+                                <form asp-action="Delete" asp-route-id="@list.Id" method="post" onsubmit="return confirm('¿Borrar esta lista?')" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="col-12 text-center py-5">
+            <div class="mb-4 opacity-25">
+                <i class="bi bi-list-stars display-1"></i>
+            </div>
+            <h3 class="text-muted">No tienes colecciones creadas</h3>
+            <p class="text-muted small mb-4">Empieza a organizar tus películas favoritas ahora mismo.</p>
+            <a asp-action="Create" class="btn btn-primary px-5">CREAR PRIMERA LISTA</a>
+        </div>
+    }
+</div>
+
+<style>
+    .list-premium-card {
+        background: var(--gx-panel);
+        border: 1px solid var(--gx-border);
+        border-radius: 16px;
+        transition: 0.3s;
+    }
+    .list-premium-card:hover {
+        border-color: var(--gx-red);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .list-icon-box {
+        width: 50px;
+        height: 50px;
+        background: var(--gx-dark);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: var(--gx-red);
+        border: 1px solid var(--gx-border);
+    }
+</style>

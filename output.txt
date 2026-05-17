@@ -1,0 +1,1 @@
+[System] DB Fix: Columna 'password', 'rating', 'latency_ms', constraints y vistas del dashboard ajustadas.

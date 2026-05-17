@@ -1,0 +1,97 @@
+@model IEnumerable<MovieApi.Models.OperationLog>
+@{
+    ViewData["Title"] = "Logs de Operaciones";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 fw-bold text-light"><i class="bi bi-journal-text text-primary"></i> Logs de Operaciones</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Export" asp-route-status="@ViewBag.SelectedStatus" asp-route-logAction="@ViewBag.SelectedAction" class="btn btn-success btn-sm px-3"><i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel</a>
+        <a asp-controller="DashboardView" asp-action="Index" class="btn btn-outline-light btn-sm px-3"><i class="bi bi-arrow-left"></i> Dashboard</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow mb-4">
+    <div class="card-body p-4">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted text-uppercase">Acción</label>
+                <select name="logAction" class="form-select">
+                    <option value="" selected="@(string.IsNullOrEmpty(ViewBag.SelectedAction))">Todas las acciones</option>
+                    @if (ViewBag.Actions != null) {
+                        foreach (var a in (List<string>)ViewBag.Actions) {
+                            <option value="@a" selected="@(ViewBag.SelectedAction == a)">@a</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted text-uppercase">Estado</label>
+                <select name="status" class="form-select">
+                    <option value="" selected="@(string.IsNullOrEmpty(ViewBag.SelectedStatus))">Todos los estados</option>
+                    @if (ViewBag.Statuses != null) {
+                        foreach (var s in (List<string>)ViewBag.Statuses) {
+                            <option value="@s" selected="@(ViewBag.SelectedStatus == s)">@s</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Filtrar</button>
+                <a asp-action="Index" class="btn btn-outline-light">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="small text-uppercase">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Acción</th>
+                    <th>Estado</th>
+                    <th>Usuario</th>
+                    <th>Mensaje / Latencia</th>
+                    <th>Detalles</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr>
+                        <td class="small text-muted">@log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                        <td><span class="fw-bold text-light">@log.Action</span></td>
+                        <td>
+                            <span class="badge @(log.Status == "success" ? "bg-success" : (log.Status == "error" ? "bg-danger" : "bg-warning"))">
+                                @log.Status
+                            </span>
+                        </td>
+                        <td class="small text-muted">@(log.Profile?.Email ?? "Sistema")</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(log.ErrorMessage))
+                            {
+                                <div class="text-danger small text-truncate" style="max-width: 300px;" title="@log.ErrorMessage">@log.ErrorMessage</div>
+                            }
+                            @if (log.LatencyMs.HasValue)
+                            {
+                                <div class="small text-primary fw-normal">@log.LatencyMs ms</div>
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#log-@log.Id">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr class="collapse" id="log-@log.Id">
+                        <td colspan="6" class="bg-dark p-3">
+                            <pre class="small mb-0 border border-secondary p-3 rounded">@log.Metadata</pre>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

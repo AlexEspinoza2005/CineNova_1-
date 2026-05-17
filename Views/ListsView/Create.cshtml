@@ -1,0 +1,88 @@
+@model MovieApi.DTOs.CreateMovieListDto
+@{
+    ViewData["Title"] = "Crear Lista";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-7">
+        <div class="premium-form-container p-5 rounded-4 shadow-lg">
+            <div class="text-center mb-5">
+                <h1 class="display-6 fw-bold text-white uppercase letter-spacing-5">NUEVA <span class="text-primary">COLECCIÓN</span></h1>
+                <div class="hero-divider"></div>
+            </div>
+
+            <form asp-action="Create" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                <div class="mb-4">
+                    <label asp-for="Name" class="form-label-premium">NOMBRE DE LA COLECCIÓN</label>
+                    <input asp-for="Name" class="form-control-premium w-100" placeholder="Ej: Favoritas del 2026" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Description" class="form-label-premium">BREVE DESCRIPCIÓN</label>
+                    <textarea asp-for="Description" class="form-control-premium w-100" rows="3" placeholder="Opcional..."></textarea>
+                </div>
+
+                <div class="mb-5">
+                    <div class="form-check form-switch custom-switch-premium">
+                        <input asp-for="IsPublic" class="form-check-input" type="checkbox" id="flexSwitchCheckDefault" checked>
+                        <label class="form-check-label text-muted small fw-bold" for="flexSwitchCheckDefault">LISTA PÚBLICA (VISIBILIDAD ABIERTA)</label>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-5 pt-4 border-top border-secondary">
+                    <a asp-action="Index" class="btn btn-outline-light px-4">REGRESAR</a>
+                    <button type="submit" class="btn btn-primary px-5 py-3">INICIALIZAR LISTA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .premium-form-container {
+        background: linear-gradient(145deg, #16161a 0%, #0b0b0d 100%);
+        border: 1px solid var(--gx-border);
+        position: relative;
+    }
+    .form-label-premium {
+        font-weight: 800;
+        font-size: 0.7rem;
+        letter-spacing: 2px;
+        color: var(--gx-text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    .form-control-premium {
+        background: var(--gx-dark) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        color: white !important;
+        transition: 0.3s;
+    }
+    .form-control-premium:focus {
+        border-color: var(--gx-red) !important;
+        box-shadow: 0 0 15px rgba(250, 30, 78, 0.15) !important;
+        outline: none;
+    }
+    .letter-spacing-5 { letter-spacing: 5px; }
+    .hero-divider {
+        width: 40px;
+        height: 3px;
+        background: var(--gx-red);
+        margin: 15px auto;
+        box-shadow: 0 0 10px var(--gx-red);
+    }
+    .custom-switch-premium .form-check-input:checked {
+        background-color: var(--gx-red);
+        border-color: var(--gx-red);
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

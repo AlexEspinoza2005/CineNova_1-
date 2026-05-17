@@ -1,0 +1,102 @@
+@model MovieApi.Models.ViewModels.RegisterViewModel
+@{
+    ViewData["Title"] = "Registro";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-7">
+        <div class="premium-form-container p-5 rounded-4 shadow-lg">
+            <div class="text-center mb-5">
+                <h1 class="display-6 fw-bold text-white uppercase letter-spacing-5">CREAR <span class="text-primary">CUENTA</span></h1>
+                <div class="hero-divider"></div>
+            </div>
+                
+            <form asp-action="Register" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="FullName" class="form-label-premium">NOMBRE COMPLETO</label>
+                        <input asp-for="FullName" class="form-control-premium w-100" placeholder="Ej: Alex Espinoza" />
+                        <span asp-validation-for="FullName" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Username" class="form-label-premium">NOMBRE DE USUARIO</label>
+                        <input asp-for="Username" class="form-control-premium w-100" placeholder="Ej: alex_01" />
+                        <span asp-validation-for="Username" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Email" class="form-label-premium">CORREO ELECTRÓNICO</label>
+                    <input asp-for="Email" class="form-control-premium w-100" placeholder="usuario@ejemplo.com" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+                
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="Password" class="form-label-premium">CONTRASEÑA</label>
+                        <input asp-for="Password" class="form-control-premium w-100" type="password" placeholder="••••••••" />
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="ConfirmPassword" class="form-label-premium">CONFIRMAR CONTRASEÑA</label>
+                        <input asp-for="ConfirmPassword" class="form-control-premium w-100" type="password" placeholder="••••••••" />
+                        <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-5">
+                    <button type="submit" class="btn btn-primary py-3">REGISTRARSE</button>
+                </div>
+            </form>
+            
+            <hr class="border-secondary my-4 opacity-25" />
+            <div class="text-center">
+                <p class="small text-muted mb-0">¿YA TIENES UNA CUENTA? <a asp-action="Login" class="text-primary fw-bold text-decoration-none ms-2">INICIAR SESIÓN</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .premium-form-container {
+        background: linear-gradient(145deg, #16161a 0%, #0b0b0d 100%);
+        border: 1px solid var(--gx-border);
+        position: relative;
+    }
+    .form-label-premium {
+        font-weight: 800;
+        font-size: 0.7rem;
+        letter-spacing: 2px;
+        color: var(--gx-text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    .form-control-premium {
+        background: var(--gx-dark) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        color: white !important;
+        transition: 0.3s;
+    }
+    .form-control-premium:focus {
+        border-color: var(--gx-red) !important;
+        box-shadow: 0 0 15px rgba(250, 30, 78, 0.15) !important;
+        outline: none;
+    }
+    .letter-spacing-5 { letter-spacing: 5px; }
+    .hero-divider {
+        width: 40px;
+        height: 3px;
+        background: var(--gx-red);
+        margin: 15px auto;
+        box-shadow: 0 0 10px var(--gx-red);
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

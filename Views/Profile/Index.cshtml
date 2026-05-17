@@ -1,0 +1,179 @@
+@model MovieApi.Models.ViewModels.ProfileViewModel
+@{
+    ViewData["Title"] = "Mi Perfil";
+    var initials = string.Join("", (Model.FullName ?? Model.Email).Split(' ').Select(s => s[0])).ToUpper();
+}
+
+<div class="profile-hero p-5 mb-5 rounded-4 shadow">
+    <div class="row align-items-center">
+        <div class="col-md-auto text-center mb-4 mb-md-0">
+            <div class="profile-avatar-wrapper">
+                @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+                {
+                    <img src="@Model.AvatarUrl" class="profile-avatar-img shadow-lg" alt="Avatar">
+                }
+                else
+                {
+                    <div class="profile-avatar-placeholder shadow-lg">@initials</div>
+                }
+                <div class="profile-avatar-glow"></div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div>
+                <h1 class="display-4 fw-bold text-white mb-1">@Model.FullName</h1>
+                <p class="text-primary fs-5 fw-bold mb-3">@@@Model.Username</p>
+                <div class="d-flex gap-3 text-muted">
+                    <span><i class="bi bi-geo-alt-fill text-primary me-1"></i> @(Model.City ?? "Ciudad"), @(Model.Country ?? "País")</span>
+                    <span><i class="bi bi-calendar-check text-primary me-1"></i> Miembro desde @Model.CreatedAt.ToString("MMMM yyyy")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">BIOGRAFÍA</div>
+            <div class="card-body">
+                <p class="text-light opacity-75">@(Model.Bio ?? "Este usuario prefiere mantener el misterio...")</p>
+                
+                <h6 class="fw-bold text-primary mt-4 mb-3 small letter-spacing-2">GÉNEROS PREFERIDOS</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    @if (Model.FavoriteGenres != null && Model.FavoriteGenres.Any()) {
+                        foreach (var genre in Model.FavoriteGenres) {
+                            <span class="badge bg-dark border border-primary text-primary fw-normal">@genre</span>
+                        }
+                    } else {
+                        <span class="text-muted small italic">Sin géneros seleccionados</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-body p-0">
+                <div class="d-flex justify-content-end p-3">
+                    <a asp-controller="Profile" asp-action="Edit" class="btn btn-primary px-4 shadow">EDITAR PERFIL</a>
+                </div>
+                <ul class="nav nav-command border-0 border-bottom border-secondary rounded-0" id="profileTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#movies">PUBLICACIONES</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#favs">FAVORITOS</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#lists">COLECCIONES</button>
+                    </li>
+                </ul>
+                <div class="tab-content p-4">
+                    <div class="tab-pane fade show active" id="movies">
+                        @if (Model.MyMovies.Any()) {
+                            foreach (var movie in Model.MyMovies.Take(5)) {
+                                <a asp-controller="MoviesView" asp-action="Details" asp-route-id="@movie.Id" class="profile-list-item">
+                                    <div class="d-flex align-items-center">
+                                        <div class="profile-list-icon"><i class="bi bi-film"></i></div>
+                                        <div class="ms-3">
+                                            <div class="fw-bold text-white">@movie.Title</div>
+                                            <div class="small text-muted">@movie.Genre | @movie.Year</div>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-primary"></i>
+                                </a>
+                            }
+                        } else {
+                            <p class="text-muted text-center py-4">No se han registrado películas.</p>
+                        }
+                    </div>
+                    
+                    <div class="tab-pane fade" id="favs">
+                        @if (Model.Favorites.Any()) {
+                            foreach (var fav in Model.Favorites.Take(5)) {
+                                <a asp-controller="MoviesView" asp-action="Details" asp-route-id="@fav.MovieId" class="profile-list-item">
+                                    <div class="d-flex align-items-center">
+                                        <div class="profile-list-icon text-danger"><i class="bi bi-heart-fill"></i></div>
+                                        <div class="ms-3">
+                                            <div class="fw-bold text-white">@fav.Movie?.Title</div>
+                                            <div class="small text-muted">@fav.Movie?.Genre</div>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-primary"></i>
+                                </a>
+                            }
+                        } else {
+                            <p class="text-muted text-center py-4">Sin favoritos guardados.</p>
+                        }
+                    </div>
+
+                    <div class="tab-pane fade" id="lists">
+                        @if (Model.MyLists.Any()) {
+                            foreach (var list in Model.MyLists) {
+                                <a asp-controller="ListsView" asp-action="Details" asp-route-id="@list.Id" class="profile-list-item">
+                                    <div class="d-flex align-items-center">
+                                        <div class="profile-list-icon text-info"><i class="bi bi-collection-play-fill"></i></div>
+                                        <div class="ms-3">
+                                            <div class="fw-bold text-white">@list.Name</div>
+                                            <div class="small text-muted">@(list.IsPublic ? "Pública" : "Privada")</div>
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-primary">VER</span>
+                                </a>
+                            }
+                        } else {
+                            <p class="text-muted text-center py-4">Sin colecciones creadas.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-hero {
+        background: linear-gradient(135deg, var(--gx-dark) 0%, #20050c 100%);
+        border: 1px solid var(--gx-border);
+        position: relative;
+        overflow: hidden;
+    }
+    .profile-hero::before {
+        content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+        opacity: 0.1;
+    }
+    
+    .profile-avatar-wrapper { position: relative; width: 150px; height: 150px; }
+    .profile-avatar-img { 
+        width: 100%; height: 100%; border-radius: 50%; object-fit: cover; 
+        border: 4px solid var(--gx-red); position: relative; z-index: 2;
+    }
+    .profile-avatar-placeholder {
+        width: 100%; height: 100%; border-radius: 50%; background: var(--gx-grey);
+        display: flex; align-items: center; justify-content: center; font-size: 3rem;
+        font-weight: 900; color: var(--gx-red); border: 4px solid var(--gx-red);
+        position: relative; z-index: 2;
+    }
+    .profile-avatar-glow {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: var(--gx-red); filter: blur(30px); opacity: 0.3; border-radius: 50%;
+    }
+    
+    .profile-list-item {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 1rem; border-radius: 12px; transition: 0.3s;
+        text-decoration: none; border: 1px solid transparent; margin-bottom: 0.5rem;
+    }
+    .profile-list-item:hover {
+        background: rgba(255,255,255,0.03);
+        border-color: var(--gx-border);
+        transform: translateX(10px);
+    }
+    .profile-list-icon {
+        width: 40px; height: 40px; background: var(--gx-dark); border-radius: 10px;
+        display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+</style>

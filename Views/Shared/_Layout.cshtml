@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - CineNova</title>
+    
+    <!-- Google Fonts: Inter & Montserrat for Gaming Look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Custom site.css -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <style>
+        /* NUCLEAR OVERRIDES */
+        :root {
+            --gx-red: #fa1e4e;
+            --gx-black: #0b0b0d;
+        }
+
+        html, body {
+            background-color: var(--gx-black) !important;
+            color: #ffffff !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        a {
+            color: var(--gx-red);
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+            a:hover {
+                color: #ff4d74;
+            }
+
+        .navbar {
+            background-color: #121214 !important;
+            border-bottom: 2px solid var(--gx-red) !important;
+        }
+
+        .bg-white, .bg-light {
+            background-color: #18181b !important;
+        }
+
+        .text-dark {
+            color: #ffffff !important;
+        }
+
+        .text-primary {
+            color: var(--gx-red) !important;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid rgba(255,255,255,0.15) !important;
+            border-radius: 10px !important;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% -20%, #2a0a10 0%, #0b0b0d 60%);
+            z-index: -1;
+        }
+
+        /* Star Rating Component */
+        .star-rating-container {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-start;
+            user-select: none;
+        }
+
+        .stars-row {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 4px;
+        }
+
+        .star-wrapper {
+            position: relative;
+            font-size: 1.8rem;
+            cursor: default;
+            color: #2d2d33;
+            transition: all 0.2s ease;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+        }
+
+        .star-rating-container:not([data-readonly="true"]) .star-wrapper {
+            cursor: pointer;
+        }
+
+        .star-wrapper.full, .star-wrapper.half {
+            color: #ffc107;
+            filter: drop-shadow(0 0 5px rgba(255,193,7,0.3));
+        }
+
+        .star-part {
+            position: absolute;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 10;
+        }
+
+            .star-part.left {
+                left: 0;
+            }
+
+            .star-part.right {
+                left: 50%;
+            }
+
+        .star-rating-container:not([data-readonly="true"]) .star-wrapper:hover {
+            transform: scale(1.15);
+        }
+
+        .rating-display-val {
+            font-weight: 800;
+            color: #fa1e4e;
+            font-size: 1.2rem;
+            margin-top: 5px;
+        }
+
+        /* Premium Form Container */
+        .premium-form-container {
+            background: linear-gradient(145deg, #202024 0%, #18181b 100%);
+            border: 1px solid #2d2d33;
+        }
+
+        .form-control-premium {
+            background: #0b0b0d !important;
+            border: 1px solid #2d2d33 !important;
+            border-radius: 8px !important;
+            color: #ffffff !important;
+            padding: 0.75rem 1rem !important;
+            font-size: 0.95rem !important;
+            transition: border-color 0.2s ease !important;
+            width: 100%;
+            display: block;
+        }
+
+            .form-control-premium:focus {
+                border-color: #fa1e4e !important;
+                box-shadow: 0 0 0 3px rgba(250, 30, 78, 0.15) !important;
+                outline: none !important;
+                background: #0b0b0d !important;
+                color: #ffffff !important;
+            }
+
+            .form-control-premium::placeholder {
+                color: #94949e !important;
+                opacity: 0.6 !important;
+            }
+
+        .form-label-premium {
+            font-weight: 800;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            color: #94949e;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .hero-divider {
+            width: 40px;
+            height: 3px;
+            background: #fa1e4e;
+            margin: 15px auto;
+            box-shadow: 0 0 10px #fa1e4e;
+        }
+
+        .letter-spacing-5 {
+            letter-spacing: 5px;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+        }
+
+    </style>
+
+
+
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark shadow">
+            <div class="container">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-film"></i> CineNova
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="MoviesView" asp-action="Index">Catálogo</a>
+                        </li>
+                        @if (User.IsInRole("admin"))
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="DashboardView" asp-action="Index">Dashboard</a>
+                        </li>
+                        }
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="AgentView" asp-action="Index">Agente IA</a>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="ListsView" asp-action="Index">Mis Listas</a>
+                        </li>
+                        }
+                    </ul>
+                    <div class="navbar-nav">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            var fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name;
+                            var avatarUrl = User.FindFirst("AvatarUrl")?.Value;
+
+                        <div class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center text-light" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                @if (!string.IsNullOrEmpty(avatarUrl))
+                                    {
+                                <img src="@avatarUrl" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover; border: 1px solid var(--gx-red);" alt="Avatar">
+                                    }
+                                    else
+                                    {
+                                <i class="bi bi-person-circle me-2 fs-5 text-primary"></i>
+                                    }
+                                <span>@fullName</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="profileDropdown">
+                                <li><a class="dropdown-item" asp-controller="Profile" asp-action="Index"><i class="bi bi-person me-2"></i> Mi Perfil</a></li>
+                                <li><hr class="dropdown-divider border-secondary"></li>
+                                <li><a class="dropdown-item text-danger fw-bold" asp-controller="Auth" asp-action="Logout"><i class="bi bi-box-arrow-right me-2"></i> Cerrar Sesión</a></li>
+                            </ul>
+                        </div>
+                        }
+                        else
+                        {
+                        <a class="btn btn-outline-light btn-sm me-2 px-3" asp-controller="Auth" asp-action="Register">Registrarse</a>
+                        <a class="btn btn-primary btn-sm px-4" asp-controller="Auth" asp-action="Login">Ingresar</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container my-4 flex-grow-1">
+        <main role="main" class="pb-5">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="footer py-3 text-muted mt-auto">
+        <div class="container text-center">
+            <span class="small">&copy; 2026 - CineNova - Proyecto Administración de Bases de Datos</span>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        const StarRating = {
+            init() {
+                document.querySelectorAll('.star-rating-container').forEach(container => {
+                    if (container.dataset.initialized) return;
+                    this.render(container);
+                    if (container.dataset.readonly !== "true") {
+                        this.bindEvents(container);
+                    }
+                    container.dataset.initialized = "true";
+                });
+            },
+            render(container, hoverValue = null) {
+                const rating = hoverValue !== null ? hoverValue : parseFloat(container.dataset.rating || 0);
+                const stars = container.querySelectorAll('.star-wrapper');
+                const display = container.querySelector('.rating-display-val');
+                stars.forEach((star, index) => {
+                    const starValue = index + 1;
+                    const icon = star.querySelector('.star-icon');
+                    star.classList.remove('full', 'half', 'empty');
+                    icon.classList.remove('bi-star-fill', 'bi-star-half', 'bi-star');
+                    if (rating >= starValue) {
+                        star.classList.add('full');
+                        icon.classList.add('bi-star-fill');
+                    } else if (rating >= starValue - 0.5) {
+                        star.classList.add('half');
+                        icon.classList.add('bi-star-half');
+                    } else {
+                        star.classList.add('empty');
+                        icon.classList.add('bi-star');
+                    }
+                });
+                if (display) display.textContent = rating.toFixed(1);
+            },
+            bindEvents(container) {
+                const stars = container.querySelectorAll('.star-wrapper');
+                stars.forEach((star, index) => {
+                    const leftPart = star.querySelector('.star-part.left');
+                    const rightPart = star.querySelector('.star-part.right');
+                    if (leftPart && rightPart) {
+                        leftPart.addEventListener('mousemove', () => this.render(container, index + 0.5));
+                        rightPart.addEventListener('mousemove', () => this.render(container, index + 1));
+                        leftPart.addEventListener('click', () => this.setRating(container, index + 0.5));
+                        rightPart.addEventListener('click', () => this.setRating(container, index + 1));
+                    }
+                });
+                container.addEventListener('mouseleave', () => this.render(container));
+            },
+            setRating(container, value) {
+                container.dataset.rating = value;
+                const input = container.querySelector('.rating-value');
+                if (input) {
+                    input.value = value;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                this.render(container);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => StarRating.init());
+    </script>
+</body>
+</html>
